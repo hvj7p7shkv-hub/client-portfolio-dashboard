@@ -67,12 +67,37 @@ def fallback_symbols(symbol: str) -> list[str]:
     return symbols
 
 
+def numeric_series(frame: pd.DataFrame, column: str) -> pd.Series:
+    if frame is None or frame.empty:
+        return pd.Series(dtype=float)
+
+    values: pd.Series | pd.DataFrame | None = None
+    if isinstance(frame.columns, pd.MultiIndex):
+        if column in frame.columns.get_level_values(0):
+            values = frame.xs(column, axis=1, level=0)
+        elif column in frame.columns.get_level_values(1):
+            values = frame.xs(column, axis=1, level=1)
+    elif column in frame.columns:
+        values = frame[column]
+
+    if values is None:
+        return pd.Series(dtype=float)
+    if isinstance(values, pd.DataFrame):
+        for subcolumn in values.columns:
+            series = pd.to_numeric(values[subcolumn], errors="coerce").dropna()
+            if not series.empty:
+                return series.astype(float)
+        return pd.Series(dtype=float)
+    return pd.to_numeric(values, errors="coerce").dropna().astype(float)
+
+
 def close_series(frame: pd.DataFrame | None) -> pd.Series:
     if frame is None or frame.empty:
         return pd.Series(dtype=float)
     for column in ("Adj Close", "Close"):
-        if column in frame.columns:
-            return pd.to_numeric(frame[column], errors="coerce").dropna().astype(float)
+        series = numeric_series(frame, column)
+        if not series.empty:
+            return series
     return pd.Series(dtype=float)
 
 

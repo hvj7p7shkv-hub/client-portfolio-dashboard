@@ -69,10 +69,34 @@ def fallback_symbols(symbol: str) -> list[str]:
     return symbols
 
 
+def numeric_series(frame: pd.DataFrame, column: str) -> pd.Series:
+    if frame is None or frame.empty:
+        return pd.Series(dtype=float)
+
+    values: pd.Series | pd.DataFrame | None = None
+    if isinstance(frame.columns, pd.MultiIndex):
+        if column in frame.columns.get_level_values(0):
+            values = frame.xs(column, axis=1, level=0)
+        elif column in frame.columns.get_level_values(1):
+            values = frame.xs(column, axis=1, level=1)
+    elif column in frame.columns:
+        values = frame[column]
+
+    if values is None:
+        return pd.Series(dtype=float)
+    if isinstance(values, pd.DataFrame):
+        for subcolumn in values.columns:
+            series = pd.to_numeric(values[subcolumn], errors="coerce").dropna()
+            if not series.empty:
+                return series.astype(float)
+        return pd.Series(dtype=float)
+    return pd.to_numeric(values, errors="coerce").dropna().astype(float)
+
+
 def quote_from_frame(frame: pd.DataFrame) -> dict[str, object] | None:
-    if frame is None or frame.empty or "Close" not in frame.columns:
+    if frame is None or frame.empty:
         return None
-    close = pd.to_numeric(frame["Close"], errors="coerce").dropna()
+    close = numeric_series(frame, "Close")
     if close.empty:
         return None
     last = float(close.iloc[-1])
@@ -214,9 +238,10 @@ def refresh(input_path: Path, output_path: Path) -> tuple[int, int]:
     holdings_mask = data["Name"].astype(str).str.strip().str.lower() != "total"
     data = clean_numeric_columns(data)
     data.loc[holdings_mask, "Yahoo Ticker"] = data.loc[holdings_mask, "Name"].map(normalize_symbol)
-    for column in ("Price Source", "Price Date"):
+    for column in ("Yahoo Ticker", "Price Source", "Price Date"):
         if column not in data.columns:
             data[column] = ""
+        data[column] = data[column].astype("object")
     tickers = data.loc[holdings_mask, "Yahoo Ticker"].astype(str).tolist()
     quotes = download_quotes(tickers)
 
