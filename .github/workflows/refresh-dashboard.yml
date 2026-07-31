@@ -32,6 +32,9 @@ jobs:
       - name: Refresh prices
         run: python scripts/refresh_prices.py --input data/holdings.csv --output data/holdings.csv
 
+      - name: Refresh technical indicators
+        run: python scripts/refresh_technical_indicators.py --input data/holdings.csv --output data/holdings.csv --period 2y --benchmark ^NSEMDCP50
+
       - name: Build dashboard
         run: |
           python scripts/build_client_portfolio_dashboard.py --input data/holdings.csv --output-dir build

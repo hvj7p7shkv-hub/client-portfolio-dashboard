@@ -34,6 +34,31 @@ NUMERIC_COLUMNS = [
     "Profit/Loss %",
     "Todays Profit/Loss",
     "Todays Profit/Loss %",
+    "RS vs 50D %",
+    "RS 3M %",
+    "RSI 14",
+    "50DMA Distance %",
+    "200DMA Distance %",
+    "52W High Distance %",
+    "Technical Score",
+]
+
+TECHNICAL_FIELDS = [
+    "Technical Status",
+    "Technical Score",
+    "Technical Note",
+    "RS vs 50D %",
+    "RS 3M %",
+    "RS Leader",
+    "RSI 14",
+    "P&F Signal",
+    "Above 50DMA",
+    "Above 200DMA",
+    "50DMA Distance %",
+    "200DMA Distance %",
+    "52W High Distance %",
+    "Technical Downloaded",
+    "Technical Error",
 ]
 
 
@@ -154,6 +179,7 @@ def slug(value: object) -> str:
 
 
 def records(data: pd.DataFrame, safe: bool) -> list[dict[str, object]]:
+    technical_fields = [field for field in TECHNICAL_FIELDS if field in data.columns]
     fields = [
         "Symbol",
         "LTP",
@@ -163,7 +189,7 @@ def records(data: pd.DataFrame, safe: bool) -> list[dict[str, object]]:
         "Portfolio Bucket",
         "Coordination Priority",
         "Suggested Discussion",
-    ]
+    ] + technical_fields
     if not safe:
         fields = [
             "Symbol",
@@ -181,7 +207,7 @@ def records(data: pd.DataFrame, safe: bool) -> list[dict[str, object]]:
             "Portfolio Bucket",
             "Coordination Priority",
             "Suggested Discussion",
-        ]
+        ] + technical_fields
     cleaned = data[fields].where(pd.notna(data[fields]), None)
     return json.loads(cleaned.to_json(orient="records"))
 
@@ -194,6 +220,15 @@ def summary(data: pd.DataFrame, safe: bool) -> dict[str, object]:
     high_priority = int((data["Coordination Priority"] == "High").sum())
     deep_losses = int((data["Portfolio Bucket"] == "Deep loss review").sum())
     winners = int(data["Portfolio Bucket"].isin(["Winner", "Big winner"]).sum())
+    technical_status = data["Technical Status"] if "Technical Status" in data.columns else pd.Series([], dtype=str)
+    technical_leaders = int(technical_status.isin(["Leader / hold", "Strong watch", "Constructive"]).sum())
+    technical_risks = int(technical_status.isin(["Risk review", "Loss + weak structure"]).sum())
+    rs_leaders = int((data["RS Leader"].astype(str) == "True").sum()) if "RS Leader" in data.columns else 0
+    above_50 = (
+        float((data["Above 50DMA"].astype(str) == "True").mean() * 100)
+        if "Above 50DMA" in data.columns and len(data)
+        else None
+    )
     base = {
         "holdings": int(len(data)),
         "returnPct": (current / invested - 1) * 100 if invested else None,
@@ -201,6 +236,10 @@ def summary(data: pd.DataFrame, safe: bool) -> dict[str, object]:
         "highPriority": high_priority,
         "deepLosses": deep_losses,
         "winners": winners,
+        "technicalLeaders": technical_leaders,
+        "technicalRisks": technical_risks,
+        "rsLeaders": rs_leaders,
+        "above50Pct": above_50,
     }
     if not safe:
         base.update(
@@ -307,6 +346,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .metric {{ min-height: 102px; padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }}
     .label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 760; }}
     .value {{ margin-top: 13px; font-size: 25px; font-weight: 780; line-height: 1.12; }}
+    .guide-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 18px; }}
+    .guide-item {{ border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fbfcf8; min-height: 132px; }}
+    .guide-item strong {{ display: block; font-size: 16px; margin-bottom: 8px; }}
+    .guide-item p {{ margin: 0; color: var(--muted); line-height: 1.45; }}
     .positive {{ color: var(--green); }}
     .negative {{ color: var(--red); }}
     .flat {{ color: var(--ink); }}
@@ -331,6 +374,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .bucket-core-position {{ color: var(--blue); border-color: #c5d9ea; background: #edf5fc; }}
     .bucket-event-watch {{ color: var(--amber); border-color: #e8d7aa; background: #fff9ea; }}
     .bucket-monitor {{ color: var(--muted); }}
+    .technical-status-leader-hold, .technical-status-strong-watch {{ color: var(--green); border-color: #bbdacc; background: #eef9f4; }}
+    .technical-status-constructive {{ color: var(--blue); border-color: #c5d9ea; background: #edf5fc; }}
+    .technical-status-risk-review, .technical-status-loss-weak-structure {{ color: var(--red); border-color: #edc3c8; background: #fff3f4; }}
+    .technical-status-monitor, .technical-status-not-downloaded {{ color: var(--muted); }}
     .bucket-stack {{ padding: 4px 18px 18px; }}
     .bucket-row {{ display: grid; grid-template-columns: 190px 1fr 72px 92px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #edf0ea; }}
     .bucket-row:last-child {{ border-bottom: 0; }}
@@ -347,6 +394,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .note strong {{ color: var(--ink); }}
     @media (max-width: 1100px) {{
       .metrics {{ grid-template-columns: repeat(3, minmax(145px, 1fr)); }}
+      .guide-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .layout {{ grid-template-columns: 1fr; }}
       .detail {{ position: static; }}
     }}
@@ -358,8 +406,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       .badge {{ display: inline-flex; margin-top: 12px; }}
       h1 {{ font-size: 30px; }}
       .metrics {{ grid-template-columns: repeat(2, minmax(130px, 1fr)); }}
+      .guide-grid {{ grid-template-columns: 1fr; }}
       .controls {{ margin-top: 12px; }}
-      table {{ min-width: 900px; }}
+      table {{ min-width: 1120px; }}
       .bucket-row, .kv {{ grid-template-columns: 1fr; }}
     }}
   </style>
@@ -420,6 +469,55 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
 
         <section>
           <div class="section-head">
+            <h2>Technical Reading Guide</h2>
+            <div class="muted">How to read the market-structure layer</div>
+          </div>
+          <div class="guide-grid">
+            <div class="guide-item">
+              <strong>Relative Strength</strong>
+              <p>Compares the stock with Nifty Midcap. A positive RS vs 50D means the stock is leading the broader market.</p>
+            </div>
+            <div class="guide-item">
+              <strong>RSI 14</strong>
+              <p>Momentum gauge. 40-60 is often a healthy reset, above 70 can be extended, below 30 can be oversold.</p>
+            </div>
+            <div class="guide-item">
+              <strong>Moving Averages</strong>
+              <p>50DMA tracks medium-term trend. 200DMA tracks long-term structure. Above both is generally stronger.</p>
+            </div>
+            <div class="guide-item">
+              <strong>Point &amp; Figure</strong>
+              <p>Filters noise and highlights breakouts or breakdowns. It is a structure check, not a standalone trade signal.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>Technical Leaders</h2>
+            <div class="muted">Relative strength, RSI, moving averages, and P&amp;F structure</div>
+          </div>
+          <div class="small-table">
+            <table id="technicalTable">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Technical Status</th>
+                  <th>RS vs 50D</th>
+                  <th>RSI</th>
+                  <th>P&amp;F</th>
+                  <th>50DMA</th>
+                  <th>200DMA</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
             <h2>All Holdings</h2>
             <div class="controls">
               <input id="search" placeholder="Search stock" oninput="renderHoldings()">
@@ -432,6 +530,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
               <select id="bucket" onchange="renderHoldings()">
                 <option value="">All buckets</option>
               </select>
+              <select id="technicalStatus" onchange="renderHoldings()">
+                <option value="">All technical statuses</option>
+              </select>
             </div>
           </div>
           <div class="small-table">
@@ -441,10 +542,13 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
                   <th>Stock</th>
                   <th>Priority</th>
                   <th>Bucket</th>
+                  <th>Technical</th>
                   <th>Weight</th>
                   {value_columns}
                   <th>P&L %</th>
                   <th>Today</th>
+                  <th>RS vs 50D</th>
+                  <th>RSI</th>
                   <th>LTP</th>
                 </tr>
               </thead>
@@ -476,9 +580,19 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     const pct = value => Number.isFinite(Number(value)) ? Number(value).toFixed(2) + '%' : '-';
     const num = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', {{ maximumFractionDigits: 2 }}) : '-';
     const safe = value => value === null || value === undefined ? '-' : String(value);
+    const yesNo = value => value === true || value === 'True' ? 'Yes' : value === false || value === 'False' ? 'No' : '-';
     const tone = value => Number(value) > 0 ? 'positive' : Number(value) < 0 ? 'negative' : 'flat';
     const slug = value => String(value || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unknown';
     const pill = (type, value) => `<span class="pill ${{type}}-${{slug(value)}}">${{safe(value)}}</span>`;
+    const technicalRank = {{
+      'Leader / hold': 0,
+      'Strong watch': 1,
+      'Constructive': 2,
+      'Monitor': 3,
+      'Risk review': 4,
+      'Loss + weak structure': 5,
+      'Not downloaded': 6
+    }};
 
     function metric(label, value, klass = '') {{
       return `<div class="metric"><div class="label">${{label}}</div><div class="value ${{klass}}">${{value}}</div></div>`;
@@ -493,6 +607,8 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         metric('Today', DATA.safe ? pct(s.todayPct) : money(s.todayProfitLoss), DATA.safe ? tone(s.todayPct) : tone(s.todayProfitLoss)),
         metric('High Priority', s.highPriority, s.highPriority ? 'negative' : 'positive'),
         metric('Deep Losses', s.deepLosses, s.deepLosses ? 'negative' : 'positive'),
+        metric('Tech Leaders', s.technicalLeaders || 0, s.technicalLeaders ? 'positive' : 'flat'),
+        metric('RS Leaders', s.rsLeaders || 0, s.rsLeaders ? 'positive' : 'flat'),
       ];
       document.getElementById('metrics').innerHTML = cells.join('');
     }}
@@ -515,18 +631,43 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
 
     function rowHtml(row) {{
       const symbol = safe(row.Symbol).replaceAll("'", "\\\\'");
+      const technicalStatus = row['Technical Status'] || 'Not downloaded';
       return `
         <tr onclick="selectHolding('${{symbol}}')" class="${{selected === row.Symbol ? 'selected' : ''}}">
           <td><strong>${{safe(row.Symbol)}}</strong></td>
           <td>${{pill('priority', row['Coordination Priority'])}}</td>
           <td>${{pill('bucket', row['Portfolio Bucket'])}}</td>
+          <td>${{pill('technical-status', technicalStatus)}}</td>
           <td class="num ${{tone(row['Weight %'])}}">${{pct(row['Weight %'])}}</td>
           ${{safeValueCells(row)}}
           <td class="num ${{tone(row['Profit/Loss %'])}}">${{pct(row['Profit/Loss %'])}}</td>
           <td class="num ${{tone(row['Todays Profit/Loss %'])}}">${{pct(row['Todays Profit/Loss %'])}}</td>
+          <td class="num ${{tone(row['RS vs 50D %'])}}">${{pct(row['RS vs 50D %'])}}</td>
+          <td class="num">${{num(row['RSI 14'])}}</td>
           <td class="num">${{num(row.LTP)}}</td>
         </tr>
       `;
+    }}
+
+    function renderTechnicalTable() {{
+      const rows = DATA.holdings
+        .slice()
+        .sort((a, b) => (technicalRank[a['Technical Status']] ?? 9) - (technicalRank[b['Technical Status']] ?? 9)
+          || Number(b['RS vs 50D %'] || -999) - Number(a['RS vs 50D %'] || -999)
+          || Number(b['Weight %'] || 0) - Number(a['Weight %'] || 0))
+        .slice(0, 18);
+      document.querySelector('#technicalTable tbody').innerHTML = rows.map(row => `
+        <tr onclick="selectHolding('${{safe(row.Symbol).replaceAll("'", "\\\\'")}}')" class="${{selected === row.Symbol ? 'selected' : ''}}">
+          <td><strong>${{safe(row.Symbol)}}</strong></td>
+          <td>${{pill('technical-status', row['Technical Status'] || 'Not downloaded')}}</td>
+          <td class="num ${{tone(row['RS vs 50D %'])}}">${{pct(row['RS vs 50D %'])}}</td>
+          <td class="num">${{num(row['RSI 14'])}}</td>
+          <td>${{safe(row['P&F Signal'])}}</td>
+          <td class="num ${{tone(row['50DMA Distance %'])}}">${{yesNo(row['Above 50DMA'])}} · ${{pct(row['50DMA Distance %'])}}</td>
+          <td class="num ${{tone(row['200DMA Distance %'])}}">${{yesNo(row['Above 200DMA'])}} · ${{pct(row['200DMA Distance %'])}}</td>
+          <td class="num">${{num(row['Technical Score'])}}</td>
+        </tr>
+      `).join('');
     }}
 
     function renderQueue() {{
@@ -554,14 +695,22 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       select.innerHTML += buckets.map(bucket => `<option>${{bucket}}</option>`).join('');
     }}
 
+    function renderTechnicalStatusFilter() {{
+      const select = document.getElementById('technicalStatus');
+      const statuses = [...new Set(DATA.holdings.map(row => row['Technical Status']).filter(Boolean))].sort();
+      select.innerHTML += statuses.map(status => `<option>${{status}}</option>`).join('');
+    }}
+
     function renderHoldings() {{
       const query = document.getElementById('search').value.toLowerCase();
       const priority = document.getElementById('priority').value;
       const bucket = document.getElementById('bucket').value;
+      const technicalStatus = document.getElementById('technicalStatus').value;
       const rows = DATA.holdings
         .filter(row => !query || safe(row.Symbol).toLowerCase().includes(query))
         .filter(row => !priority || row['Coordination Priority'] === priority)
         .filter(row => !bucket || row['Portfolio Bucket'] === bucket)
+        .filter(row => !technicalStatus || row['Technical Status'] === technicalStatus)
         .sort((a, b) => Number(b['Weight %'] || 0) - Number(a['Weight %'] || 0));
       document.querySelector('#holdingsTable tbody').innerHTML = rows.map(rowHtml).join('');
     }}
@@ -577,10 +726,20 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         ${{detailMetric('P&L Amount', money(row['Profit/Loss']), tone(row['Profit/Loss']))}}
         ${{detailMetric('Quantity / Avg Price', safe(row.Quantity) + ' / ' + num(row['Avg. Price']))}}
       `;
+      const technicalMetrics = `
+        ${{detailMetric('Technical Status', pill('technical-status', row['Technical Status'] || 'Not downloaded'))}}
+        ${{detailMetric('RS vs 50D', pct(row['RS vs 50D %']), tone(row['RS vs 50D %']))}}
+        ${{detailMetric('RS 3M', pct(row['RS 3M %']), tone(row['RS 3M %']))}}
+        ${{detailMetric('RSI 14', num(row['RSI 14']))}}
+        ${{detailMetric('50DMA', yesNo(row['Above 50DMA']) + ' · ' + pct(row['50DMA Distance %']), tone(row['50DMA Distance %']))}}
+        ${{detailMetric('200DMA', yesNo(row['Above 200DMA']) + ' · ' + pct(row['200DMA Distance %']), tone(row['200DMA Distance %']))}}
+        ${{detailMetric('52W High Gap', pct(row['52W High Distance %']), tone(row['52W High Distance %']))}}
+        ${{detailMetric('P&F', safe(row['P&F Signal']))}}
+      `;
       document.getElementById('detail').innerHTML = `
         <div class="detail-title">
           <strong>${{safe(row.Symbol)}}</strong>
-          <div class="muted">${{pill('priority', row['Coordination Priority'])}} ${{pill('bucket', row['Portfolio Bucket'])}}</div>
+          <div class="muted">${{pill('priority', row['Coordination Priority'])}} ${{pill('bucket', row['Portfolio Bucket'])}} ${{pill('technical-status', row['Technical Status'] || 'Not downloaded')}}</div>
         </div>
         <div class="kv">
           ${{detailMetric('Weight', pct(row['Weight %']), tone(row['Weight %']))}}
@@ -588,8 +747,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
           ${{detailMetric('Today', pct(row['Todays Profit/Loss %']), tone(row['Todays Profit/Loss %']))}}
           ${{detailMetric('LTP', num(row.LTP))}}
           ${{valueMetrics}}
+          ${{technicalMetrics}}
         </div>
         <div class="note"><strong>Discussion:</strong> ${{safe(row['Suggested Discussion'])}}</div>
+        <div class="note"><strong>Technical reading:</strong> ${{safe(row['Technical Note'])}}</div>
       `;
     }}
 
@@ -598,6 +759,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       const row = DATA.holdings.find(item => item.Symbol === symbol) || DATA.holdings[0];
       renderDetail(row);
       renderQueue();
+      renderTechnicalTable();
       renderHoldings();
     }}
 
@@ -617,7 +779,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
 
     renderMetrics();
     renderBuckets();
+    renderTechnicalTable();
     renderBucketFilter();
+    renderTechnicalStatusFilter();
     selected = DATA.holdings[0]?.Symbol || null;
     renderQueue();
     renderHoldings();
