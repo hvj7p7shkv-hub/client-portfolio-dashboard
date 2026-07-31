@@ -294,10 +294,15 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     header {{ background: #fbfcf8; border-bottom: 1px solid var(--line); }}
     .wrap {{ max-width: 1420px; margin: 0 auto; padding: 22px 24px; }}
     .topbar {{ display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }}
+    .header-actions {{ display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }}
     h1 {{ margin: 0; font-size: 35px; line-height: 1.08; letter-spacing: 0; }}
     h2 {{ margin: 0; font-size: 22px; letter-spacing: 0; }}
     .muted {{ color: var(--muted); line-height: 1.45; }}
     .badge {{ border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: #f8faf5; color: var(--muted); white-space: nowrap; font-weight: 700; }}
+    .refresh-box {{ display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }}
+    .refresh-status {{ color: var(--muted); font-size: 13px; white-space: nowrap; }}
+    .refresh-button {{ min-height: 38px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; background: #fff; color: var(--ink); font: inherit; font-weight: 750; cursor: pointer; }}
+    .refresh-button:hover {{ background: #f7faf4; }}
     .metrics {{ display: grid; grid-template-columns: repeat(6, minmax(145px, 1fr)); gap: 12px; margin-top: 18px; }}
     .metric {{ min-height: 102px; padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }}
     .label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 760; }}
@@ -348,6 +353,8 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     @media (max-width: 760px) {{
       .wrap {{ padding: 18px 14px; }}
       .topbar, .section-head {{ display: block; }}
+      .header-actions {{ align-items: flex-start; margin-top: 12px; }}
+      .refresh-box {{ justify-content: flex-start; }}
       .badge {{ display: inline-flex; margin-top: 12px; }}
       h1 {{ font-size: 30px; }}
       .metrics {{ grid-template-columns: repeat(2, minmax(130px, 1fr)); }}
@@ -365,7 +372,13 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
           <h1>{html.escape(title)}</h1>
           <div class="muted">{html.escape(mode)} · Generated {html.escape(generated_at)} · Source {html.escape(source.name)}</div>
         </div>
-        <div class="badge">{'Online-safe' if safe else 'Local full view'}</div>
+        <div class="header-actions">
+          <div class="badge">{'Online-safe' if safe else 'Local full view'}</div>
+          <div class="refresh-box">
+            <button class="refresh-button" type="button" onclick="refreshPage()">Refresh Page</button>
+            <span id="refreshStatus" class="refresh-status">Auto refresh in 30:00</span>
+          </div>
+        </div>
       </div>
       <div id="metrics" class="metrics"></div>
     </div>
@@ -453,6 +466,8 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
 
   <script>
     const DATA = {payload_json};
+    const AUTO_REFRESH_MS = 30 * 60 * 1000;
+    const autoRefreshStartedAt = Date.now();
     let selected = null;
 
     const money = value => Number.isFinite(Number(value))
@@ -586,6 +601,20 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       renderHoldings();
     }}
 
+    function refreshPage() {{
+      const url = new URL(window.location.href);
+      url.searchParams.set('refresh', String(Date.now()));
+      window.location.replace(url.toString());
+    }}
+
+    function renderRefreshStatus() {{
+      const remaining = Math.max(0, AUTO_REFRESH_MS - (Date.now() - autoRefreshStartedAt));
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      document.getElementById('refreshStatus').textContent =
+        `Auto refresh in ${{String(minutes).padStart(2, '0')}}:${{String(seconds).padStart(2, '0')}}`;
+    }}
+
     renderMetrics();
     renderBuckets();
     renderBucketFilter();
@@ -593,6 +622,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     renderQueue();
     renderHoldings();
     renderDetail(DATA.holdings[0] || {{}});
+    renderRefreshStatus();
+    setInterval(renderRefreshStatus, 1000);
+    setTimeout(refreshPage, AUTO_REFRESH_MS);
   </script>
 </body>
 </html>
