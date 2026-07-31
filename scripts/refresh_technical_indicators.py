@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ TECHNICAL_COLUMNS = [
     "Technical Status",
     "Technical Score",
     "Technical Note",
+    "RS Trend",
     "RS vs 50D %",
     "RS 3M %",
     "RS Leader",
@@ -260,6 +262,18 @@ def relative_strength(close: pd.Series, benchmark_close: pd.Series) -> tuple[flo
     return rs_vs_50, rs_3m, leader
 
 
+def relative_strength_trend(close: pd.Series, benchmark_close: pd.Series, days: int = 90) -> str | None:
+    aligned = pd.concat([close.rename("stock"), benchmark_close.rename("benchmark")], axis=1).dropna()
+    aligned = aligned[aligned["benchmark"] > 0]
+    if len(aligned) < 20:
+        return None
+    ratio = (aligned["stock"] / aligned["benchmark"]).tail(days).dropna()
+    if ratio.empty or ratio.iloc[0] == 0:
+        return None
+    normalized = (ratio / ratio.iloc[0] * 100).round(2).tolist()
+    return json.dumps(normalized, separators=(",", ":"))
+
+
 def score_and_status(metrics: dict[str, object]) -> tuple[int, str, str]:
     score = 0
     reasons: list[str] = []
@@ -327,10 +341,12 @@ def analyse_frame(frame: pd.DataFrame, benchmark_close: pd.Series) -> dict[str, 
     high_52w = float(close.tail(252).max())
     rsi_14 = float(rsi(close).iloc[-1])
     rs_vs_50, rs_3m, rs_leader = relative_strength(close, benchmark_close)
+    rs_trend = relative_strength_trend(close, benchmark_close)
     box_size = max(latest * 0.02, 0.01)
     pnf = pnf_signal(build_pnf(close, box_size=box_size, reversal=3))
 
     metrics: dict[str, object] = {
+        "RS Trend": rs_trend,
         "RS vs 50D %": rs_vs_50,
         "RS 3M %": rs_3m,
         "RS Leader": rs_leader,

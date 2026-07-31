@@ -47,6 +47,7 @@ TECHNICAL_FIELDS = [
     "Technical Status",
     "Technical Score",
     "Technical Note",
+    "RS Trend",
     "RS vs 50D %",
     "RS 3M %",
     "RS Leader",
@@ -237,6 +238,7 @@ def summary(data: pd.DataFrame, safe: bool) -> dict[str, object]:
         "deepLosses": deep_losses,
         "winners": winners,
         "technicalLeaders": technical_leaders,
+        "technicalLaggards": technical_risks,
         "technicalRisks": technical_risks,
         "rsLeaders": rs_leaders,
         "above50Pct": above_50,
@@ -366,6 +368,14 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     tbody tr:hover, tr.selected {{ background: #f7faf4; }}
     .small-table {{ overflow: auto; max-height: 620px; }}
     .pill {{ display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; white-space: nowrap; font-size: 13px; font-weight: 700; background: #f8f9f5; }}
+    .spark-cell {{ min-width: 150px; }}
+    .sparkline {{ display: block; width: 148px; height: 42px; overflow: visible; }}
+    .sparkline path.line {{ fill: none; stroke-width: 2.4; }}
+    .sparkline path.area {{ opacity: .14; }}
+    .sparkline line {{ stroke: #d9dfd4; stroke-width: 1; stroke-dasharray: 3 3; }}
+    .spark-label {{ display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.25; white-space: nowrap; }}
+    .detail-chart {{ margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fbfcf8; }}
+    .detail-chart .sparkline {{ width: 100%; height: 86px; }}
     .priority-high {{ color: var(--red); border-color: #edc3c8; background: #fff3f4; }}
     .priority-medium {{ color: var(--amber); border-color: #e8d7aa; background: #fff9ea; }}
     .priority-low {{ color: var(--green); border-color: #bbdacc; background: #eef9f4; }}
@@ -408,7 +418,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       .metrics {{ grid-template-columns: repeat(2, minmax(130px, 1fr)); }}
       .guide-grid {{ grid-template-columns: 1fr; }}
       .controls {{ margin-top: 12px; }}
-      table {{ min-width: 1120px; }}
+      table {{ min-width: 1240px; }}
       .bucket-row, .kv {{ grid-template-columns: 1fr; }}
     }}
   </style>
@@ -518,6 +528,30 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
 
         <section>
           <div class="section-head">
+            <h2>Technical Laggards</h2>
+            <div class="muted">Weak relative strength and lower-quality technical structure</div>
+          </div>
+          <div class="small-table">
+            <table id="laggardsTable">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Technical Status</th>
+                  <th>RS Trend</th>
+                  <th>RS vs 50D</th>
+                  <th>RS 3M</th>
+                  <th>RSI</th>
+                  <th>P&amp;F</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
             <h2>All Holdings</h2>
             <div class="controls">
               <input id="search" placeholder="Search stock" oninput="renderHoldings()">
@@ -594,6 +628,62 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       'Not downloaded': 6
     }};
 
+    function isDownloaded(row) {{
+      return row['Technical Downloaded'] === true || row['Technical Downloaded'] === 'True';
+    }}
+
+    function parseTrend(value) {{
+      if (Array.isArray(value)) return value.map(Number).filter(Number.isFinite);
+      if (!value || value === '-') return [];
+      try {{
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.map(Number).filter(Number.isFinite) : [];
+      }} catch (error) {{
+        return [];
+      }}
+    }}
+
+    function sparkline(value, size = 'small') {{
+      const values = parseTrend(value);
+      if (values.length < 2) return '<span class="muted">No RS trend</span>';
+      const width = size === 'large' ? 320 : 148;
+      const height = size === 'large' ? 86 : 42;
+      const pad = 4;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min || 1;
+      const points = values.map((item, index) => {{
+        const x = pad + index * ((width - pad * 2) / Math.max(1, values.length - 1));
+        const y = height - pad - ((item - min) / range) * (height - pad * 2);
+        return [x, y];
+      }});
+      const line = points.map((point, index) => `${{index ? 'L' : 'M'}}${{point[0].toFixed(1)}},${{point[1].toFixed(1)}}`).join(' ');
+      const area = `${{line}} L${{points[points.length - 1][0].toFixed(1)}},${{height - pad}} L${{points[0][0].toFixed(1)}},${{height - pad}} Z`;
+      const baselineValue = Math.min(max, Math.max(min, 100));
+      const baselineY = height - pad - ((baselineValue - min) / range) * (height - pad * 2);
+      const rising = values[values.length - 1] >= values[0];
+      const color = rising ? '#0e7259' : '#b33e45';
+      return `
+        <svg class="sparkline" viewBox="0 0 ${{width}} ${{height}}" role="img" aria-label="Relative strength trend">
+          <line x1="${{pad}}" y1="${{baselineY.toFixed(1)}}" x2="${{width - pad}}" y2="${{baselineY.toFixed(1)}}"></line>
+          <path class="area" d="${{area}}" fill="${{color}}"></path>
+          <path class="line" d="${{line}}" stroke="${{color}}"></path>
+        </svg>
+      `;
+    }}
+
+    function trendLabel(value) {{
+      const values = parseTrend(value);
+      if (values.length < 2) return '-';
+      const change = values[values.length - 1] - values[0];
+      const label = `${{change >= 0 ? '+' : ''}}${{change.toFixed(1)}} pts`;
+      return `<span class="${{change >= 0 ? 'positive' : 'negative'}}">${{label}}</span>`;
+    }}
+
+    function rsTrendCell(row) {{
+      return `<div class="spark-cell">${{sparkline(row['RS Trend'])}}<span class="spark-label">90D RS: ${{trendLabel(row['RS Trend'])}}</span></div>`;
+    }}
+
     function metric(label, value, klass = '') {{
       return `<div class="metric"><div class="label">${{label}}</div><div class="value ${{klass}}">${{value}}</div></div>`;
     }}
@@ -608,6 +698,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         metric('High Priority', s.highPriority, s.highPriority ? 'negative' : 'positive'),
         metric('Deep Losses', s.deepLosses, s.deepLosses ? 'negative' : 'positive'),
         metric('Tech Leaders', s.technicalLeaders || 0, s.technicalLeaders ? 'positive' : 'flat'),
+        metric('Tech Laggards', s.technicalLaggards || 0, s.technicalLaggards ? 'negative' : 'flat'),
         metric('RS Leaders', s.rsLeaders || 0, s.rsLeaders ? 'positive' : 'flat'),
       ];
       document.getElementById('metrics').innerHTML = cells.join('');
@@ -665,6 +756,29 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
           <td>${{safe(row['P&F Signal'])}}</td>
           <td class="num ${{tone(row['50DMA Distance %'])}}">${{yesNo(row['Above 50DMA'])}} · ${{pct(row['50DMA Distance %'])}}</td>
           <td class="num ${{tone(row['200DMA Distance %'])}}">${{yesNo(row['Above 200DMA'])}} · ${{pct(row['200DMA Distance %'])}}</td>
+          <td class="num">${{num(row['Technical Score'])}}</td>
+        </tr>
+      `).join('');
+    }}
+
+    function renderLaggardsTable() {{
+      const downloaded = DATA.holdings.filter(isDownloaded);
+      const rows = (downloaded.length ? downloaded : DATA.holdings)
+        .slice()
+        .sort((a, b) => Number(a['Technical Score'] ?? 999) - Number(b['Technical Score'] ?? 999)
+          || Number(a['RS vs 50D %'] ?? 999) - Number(b['RS vs 50D %'] ?? 999)
+          || Number(a['RS 3M %'] ?? 999) - Number(b['RS 3M %'] ?? 999)
+          || Number(b['Weight %'] || 0) - Number(a['Weight %'] || 0))
+        .slice(0, 18);
+      document.querySelector('#laggardsTable tbody').innerHTML = rows.map(row => `
+        <tr onclick="selectHolding('${{safe(row.Symbol).replaceAll("'", "\\\\'")}}')" class="${{selected === row.Symbol ? 'selected' : ''}}">
+          <td><strong>${{safe(row.Symbol)}}</strong></td>
+          <td>${{pill('technical-status', row['Technical Status'] || 'Not downloaded')}}</td>
+          <td>${{rsTrendCell(row)}}</td>
+          <td class="num ${{tone(row['RS vs 50D %'])}}">${{pct(row['RS vs 50D %'])}}</td>
+          <td class="num ${{tone(row['RS 3M %'])}}">${{pct(row['RS 3M %'])}}</td>
+          <td class="num">${{num(row['RSI 14'])}}</td>
+          <td>${{safe(row['P&F Signal'])}}</td>
           <td class="num">${{num(row['Technical Score'])}}</td>
         </tr>
       `).join('');
@@ -736,6 +850,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         ${{detailMetric('52W High Gap', pct(row['52W High Distance %']), tone(row['52W High Distance %']))}}
         ${{detailMetric('P&F', safe(row['P&F Signal']))}}
       `;
+      const detailTrend = parseTrend(row['RS Trend']).length >= 2
+        ? `<div class="detail-chart"><span class="label">Relative Strength Trend vs Nifty Midcap</span>${{sparkline(row['RS Trend'], 'large')}}<span class="spark-label">90-day change: ${{trendLabel(row['RS Trend'])}}</span></div>`
+        : '';
       document.getElementById('detail').innerHTML = `
         <div class="detail-title">
           <strong>${{safe(row.Symbol)}}</strong>
@@ -749,6 +866,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
           ${{valueMetrics}}
           ${{technicalMetrics}}
         </div>
+        ${{detailTrend}}
         <div class="note"><strong>Discussion:</strong> ${{safe(row['Suggested Discussion'])}}</div>
         <div class="note"><strong>Technical reading:</strong> ${{safe(row['Technical Note'])}}</div>
       `;
@@ -760,6 +878,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       renderDetail(row);
       renderQueue();
       renderTechnicalTable();
+      renderLaggardsTable();
       renderHoldings();
     }}
 
@@ -780,6 +899,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     renderMetrics();
     renderBuckets();
     renderTechnicalTable();
+    renderLaggardsTable();
     renderBucketFilter();
     renderTechnicalStatusFilter();
     selected = DATA.holdings[0]?.Symbol || null;
