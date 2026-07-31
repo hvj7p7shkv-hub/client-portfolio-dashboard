@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Client Portfolio Dashboard</title>
+  <style>
+    :root {
+      --bg: #f5f6f1;
+      --panel: #fffefa;
+      --ink: #171916;
+      --muted: #626960;
+      --line: #dce2d7;
+      --green: #0e7259;
+      --red: #b33e45;
+      --amber: #936807;
+      --blue: #235b8f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+    header { background: #fbfcf8; border-bottom: 1px solid var(--line); }
+    .wrap { max-width: 1420px; margin: 0 auto; padding: 22px 24px; }
+    .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    h1 { margin: 0; font-size: 35px; line-height: 1.08; letter-spacing: 0; }
+    h2 { margin: 0; font-size: 22px; letter-spacing: 0; }
+    .muted { color: var(--muted); line-height: 1.45; }
+    .badge { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: #f8faf5; color: var(--muted); white-space: nowrap; font-weight: 700; }
+    .metrics { display: grid; grid-template-columns: repeat(6, minmax(145px, 1fr)); gap: 12px; margin-top: 18px; }
+    .metric { min-height: 102px; padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 760; }
+    .value { margin-top: 13px; font-size: 25px; font-weight: 780; line-height: 1.12; }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .flat { color: var(--ink); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(360px, .85fr); gap: 16px; align-items: start; }
+    section { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin: 16px 0; overflow: hidden; }
+    .section-head { padding: 17px 18px; display: flex; justify-content: space-between; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input, select { min-height: 40px; border: 1px solid var(--line); border-radius: 7px; padding: 9px 11px; font: inherit; background: #fbfcf8; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid #edf0ea; text-align: left; vertical-align: top; }
+    th { color: var(--muted); background: #fbfcf8; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tr.selected { background: #f7faf4; }
+    .small-table { overflow: auto; max-height: 620px; }
+    .pill { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; white-space: nowrap; font-size: 13px; font-weight: 700; background: #f8f9f5; }
+    .priority-high { color: var(--red); border-color: #edc3c8; background: #fff3f4; }
+    .priority-medium { color: var(--amber); border-color: #e8d7aa; background: #fff9ea; }
+    .priority-low { color: var(--green); border-color: #bbdacc; background: #eef9f4; }
+    .bucket-deep-loss-review, .bucket-loss-review { color: var(--red); border-color: #edc3c8; background: #fff3f4; }
+    .bucket-big-winner, .bucket-winner { color: var(--green); border-color: #bbdacc; background: #eef9f4; }
+    .bucket-core-position { color: var(--blue); border-color: #c5d9ea; background: #edf5fc; }
+    .bucket-event-watch { color: var(--amber); border-color: #e8d7aa; background: #fff9ea; }
+    .bucket-monitor { color: var(--muted); }
+    .bucket-stack { padding: 4px 18px 18px; }
+    .bucket-row { display: grid; grid-template-columns: 190px 1fr 72px 92px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #edf0ea; }
+    .bucket-row:last-child { border-bottom: 0; }
+    .bar { height: 12px; background: #edf0ea; border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+    .detail { position: sticky; top: 14px; }
+    .detail-body { padding: 18px; }
+    .detail-title strong { display: block; font-size: 28px; line-height: 1.1; }
+    .kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 15px; }
+    .kv div { min-height: 76px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fbfcf8; }
+    .kv .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 760; }
+    .kv .v { display: block; margin-top: 8px; font-size: 19px; font-weight: 740; overflow-wrap: anywhere; }
+    .note { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }
+    .note strong { color: var(--ink); }
+    @media (max-width: 1100px) {
+      .metrics { grid-template-columns: repeat(3, minmax(145px, 1fr)); }
+      .layout { grid-template-columns: 1fr; }
+      .detail { position: static; }
+    }
+    @media (max-width: 760px) {
+      .wrap { padding: 18px 14px; }
+      .topbar, .section-head { display: block; }
+      .badge { display: inline-flex; margin-top: 12px; }
+      h1 { font-size: 30px; }
+      .metrics { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+      .controls { margin-top: 12px; }
+      table { min-width: 900px; }
+      .bucket-row, .kv { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="topbar">
+        <div>
+          <h1>Client Portfolio Dashboard</h1>
+          <div class="muted">Client-safe online view · Generated 2026-07-31 18:53 · Source Investments.csv</div>
+        </div>
+        <div class="badge">Online-safe</div>
+      </div>
+      <div id="metrics" class="metrics"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="layout">
+      <div>
+        <section>
+          <div class="section-head">
+            <h2>Coordination Queue</h2>
+            <div class="muted">Items that need discussion before action</div>
+          </div>
+          <div class="small-table">
+            <table id="queueTable">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Priority</th>
+                  <th>Bucket</th>
+                  <th>Weight</th>
+                  <th>P&L</th>
+                  <th>Today</th>
+                  <th>Discussion</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>Portfolio Buckets</h2>
+            <div class="muted">Bucket weight and average P&L</div>
+          </div>
+          <div id="bucketRows" class="bucket-stack"></div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>All Holdings</h2>
+            <div class="controls">
+              <input id="search" placeholder="Search stock" oninput="renderHoldings()">
+              <select id="priority" onchange="renderHoldings()">
+                <option value="">All priorities</option>
+                <option>High</option>
+                <option>Medium</option>
+                <option>Low</option>
+              </select>
+              <select id="bucket" onchange="renderHoldings()">
+                <option value="">All buckets</option>
+              </select>
+            </div>
+          </div>
+          <div class="small-table">
+            <table id="holdingsTable">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Priority</th>
+                  <th>Bucket</th>
+                  <th>Weight</th>
+                  
+                  <th>P&L %</th>
+                  <th>Today</th>
+                  <th>LTP</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="detail">
+        <div class="section-head">
+          <h2>Holding Detail</h2>
+          <div class="muted">Click a holding</div>
+        </div>
+        <div id="detail" class="detail-body"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const DATA = {"title": "Client Portfolio Dashboard", "mode": "Client-safe online view", "generatedAt": "2026-07-31 18:53", "source": "Investments.csv", "safe": true, "summary": {"holdings": 89, "returnPct": 12.444933588710816, "todayPct": 0.09790855891022908, "highPriority": 13, "deepLosses": 6, "winners": 11}, "bucketRows": [{"bucket": "Monitor", "count": 56, "weightPct": 55.01112894514533, "avgPnlPct": 7.352857142857142}, {"bucket": "Core position", "count": 5, "weightPct": 14.015633263672033, "avgPnlPct": 14.430000000000001}, {"bucket": "Winner", "count": 7, "weightPct": 12.629747811942046, "avgPnlPct": 42.72571428571429}, {"bucket": "Big winner", "count": 4, "weightPct": 7.714390169517754, "avgPnlPct": 175.865}, {"bucket": "Loss review", "count": 8, "weightPct": 4.30236241065916, "avgPnlPct": -16.134999999999998}, {"bucket": "Event watch", "count": 3, "weightPct": 3.4181604036521462, "avgPnlPct": 10.626666666666667}, {"bucket": "Deep loss review", "count": 6, "weightPct": 2.9085769954115275, "avgPnlPct": -36.89666666666667}], "holdings": [{"Symbol": "ECLERX", "LTP": 1488.8, "Profit/Loss %": -25.45, "Todays Profit/Loss %": 7.01, "Weight %": 0.4361078646, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "HCLTECH", "LTP": 1139.0, "Profit/Loss %": -27.68, "Todays Profit/Loss %": 5.65, "Weight %": 0.7506954796, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "M&MFIN", "LTP": 334.05, "Profit/Loss %": -3.68, "Todays Profit/Loss %": 5.05, "Weight %": 0.7828147887, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "AUROPHARMA", "LTP": 1620.5, "Profit/Loss %": 32.53, "Todays Profit/Loss %": 3.81, "Weight %": 1.3053870131, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "OBEROIRLTY", "LTP": 1934.4, "Profit/Loss %": 6.03, "Todays Profit/Loss %": 3.74, "Weight %": 1.1332711624, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "LTF", "LTP": 327.0, "Profit/Loss %": 25.9, "Todays Profit/Loss %": 3.73, "Weight %": 1.1494406641, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "MUTHOOTFIN", "LTP": 3054.9, "Profit/Loss %": 9.49, "Todays Profit/Loss %": 3.57, "Weight %": 0.5220010192, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "LUPIN", "LTP": 2476.0, "Profit/Loss %": 7.88, "Todays Profit/Loss %": 3.18, "Weight %": 0.6044034753, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "MAPMYINDIA", "LTP": 938.35, "Profit/Loss %": -50.16, "Todays Profit/Loss %": 2.62, "Weight %": 0.2748668826, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "APOLLO", "LTP": 450.05, "Profit/Loss %": 8.98, "Todays Profit/Loss %": 2.39, "Weight %": 0.4284515177, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "OFSS", "LTP": 11248.0, "Profit/Loss %": 38.31, "Todays Profit/Loss %": 2.38, "Weight %": 3.0202598217, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "TORNTPHARM", "LTP": 4768.3, "Profit/Loss %": 9.51, "Todays Profit/Loss %": 2.29, "Weight %": 0.6983789397, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "SHREECEM", "LTP": 26765.0, "Profit/Loss %": -5.1, "Todays Profit/Loss %": 2.08, "Weight %": 1.3066929738, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "MRF", "LTP": 134655.0, "Profit/Loss %": 13.86, "Todays Profit/Loss %": 1.96, "Weight %": 1.0956643775, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "SCHNEIDER", "LTP": 1481.6, "Profit/Loss %": 15.19, "Todays Profit/Loss %": 1.91, "Weight %": 0.9764972981, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "BHARTIARTL", "LTP": 1910.4, "Profit/Loss %": 6.25, "Todays Profit/Loss %": 1.89, "Weight %": 2.5182241338, "Portfolio Bucket": "Core position", "Coordination Priority": "Medium", "Suggested Discussion": "Large allocation; confirm conviction and risk limit."}, {"Symbol": "JBCHEPHARM", "LTP": 2364.6, "Profit/Loss %": 10.62, "Todays Profit/Loss %": 1.87, "Weight %": 0.8658153014, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "HINDZINC", "LTP": 536.55, "Profit/Loss %": -16.33, "Todays Profit/Loss %": 1.48, "Weight %": 0.6286772562, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "AARTIPHARM", "LTP": 706.35, "Profit/Loss %": -18.63, "Todays Profit/Loss %": 1.31, "Weight %": 0.3620891878, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "ABB", "LTP": 6950.5, "Profit/Loss %": 2.69, "Todays Profit/Loss %": 1.3, "Weight %": 2.0359804627, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "BAJFINANCE", "LTP": 1031.4, "Profit/Loss %": 18.67, "Todays Profit/Loss %": 1.28, "Weight %": 2.5680508048, "Portfolio Bucket": "Core position", "Coordination Priority": "Medium", "Suggested Discussion": "Large allocation; confirm conviction and risk limit."}, {"Symbol": "LTTS", "LTP": 3206.2, "Profit/Loss %": -3.77, "Todays Profit/Loss %": 1.24, "Weight %": 0.4695892784, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "SOUTHBANK", "LTP": 46.1, "Profit/Loss %": 16.35, "Todays Profit/Loss %": 1.23, "Weight %": 1.2221008977, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "EICHERMOT", "LTP": 7339.5, "Profit/Loss %": 51.58, "Todays Profit/Loss %": 1.23, "Weight %": 1.6124464362, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "AMAL-EQ", "LTP": 592.35, "Profit/Loss %": 12.09, "Todays Profit/Loss %": 1.19, "Weight %": 0.6940582848, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "IDFCFIRSTB", "LTP": 80.46, "Profit/Loss %": -1.04, "Todays Profit/Loss %": 1.18, "Weight %": 0.8956146385, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "AARTIIND", "LTP": 487.7, "Profit/Loss %": -3.61, "Todays Profit/Loss %": 1.17, "Weight %": 0.5198512696, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "TATASTEEL", "LTP": 189.8, "Profit/Loss %": 43.32, "Todays Profit/Loss %": 1.12, "Weight %": 1.1675434758, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "INDHOTEL", "LTP": 728.6, "Profit/Loss %": -0.7, "Todays Profit/Loss %": 1.1, "Weight %": 1.1204849532, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "LAURUSLABS", "LTP": 1542.3, "Profit/Loss %": 130.95, "Todays Profit/Loss %": 0.94, "Weight %": 1.3553381775, "Portfolio Bucket": "Big winner", "Coordination Priority": "High", "Suggested Discussion": "Review position size and whether to protect gains with staged trimming rules."}, {"Symbol": "SMSPHARMA", "LTP": 421.45, "Profit/Loss %": 10.41, "Todays Profit/Loss %": 0.91, "Weight %": 0.4938142384, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "GMRAIRPORT", "LTP": 112.8, "Profit/Loss %": 26.37, "Todays Profit/Loss %": 0.9, "Weight %": 0.6773615167, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "HINDCOPPER", "LTP": 499.2, "Profit/Loss %": -11.77, "Todays Profit/Loss %": 0.86, "Weight %": 0.4386856112, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "NH", "LTP": 2002.8, "Profit/Loss %": 9.88, "Todays Profit/Loss %": 0.84, "Weight %": 2.05335096, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "ICICIBANK", "LTP": 1411.4, "Profit/Loss %": 22.46, "Todays Profit/Loss %": 0.81, "Weight %": 3.1007655835, "Portfolio Bucket": "Core position", "Coordination Priority": "Medium", "Suggested Discussion": "Large allocation; confirm conviction and risk limit."}, {"Symbol": "BEL", "LTP": 418.05, "Profit/Loss %": 18.95, "Todays Profit/Loss %": 0.72, "Weight %": 1.5273185501, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "ETERNAL", "LTP": 281.65, "Profit/Loss %": 23.1, "Todays Profit/Loss %": 0.7, "Weight %": 0.5568921383, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "FACT", "LTP": 883.3, "Profit/Loss %": -2.86, "Todays Profit/Loss %": 0.7, "Weight %": 0.4527973095, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "TRENT", "LTP": 3340.6, "Profit/Loss %": 10.55, "Todays Profit/Loss %": 0.69, "Weight %": 0.8426383647, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "GLENMARK", "LTP": 2211.0, "Profit/Loss %": -7.89, "Todays Profit/Loss %": 0.68, "Weight %": 1.2953176903, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "JAGSNPHARM", "LTP": 236.62, "Profit/Loss %": 6.35, "Todays Profit/Loss %": 0.67, "Weight %": 0.6931209224, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "BAJAJHCARE", "LTP": 344.6, "Profit/Loss %": -36.75, "Todays Profit/Loss %": 0.66, "Weight %": 0.5551821842, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "HDFCBANK", "LTP": 801.05, "Profit/Loss %": 2.67, "Todays Profit/Loss %": 0.65, "Weight %": 0.6452824849, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "JINDALPOLY", "LTP": 620.45, "Profit/Loss %": -10.91, "Todays Profit/Loss %": 0.45, "Weight %": 0.6361102472, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "CANBK", "LTP": 127.19, "Profit/Loss %": -6.39, "Todays Profit/Loss %": 0.43, "Weight %": 1.9653187151, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "HINDALCO", "LTP": 953.2, "Profit/Loss %": 13.22, "Todays Profit/Loss %": 0.42, "Weight %": 0.9772589051, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "TATAELXSI", "LTP": 3678.9, "Profit/Loss %": -30.94, "Todays Profit/Loss %": 0.21, "Weight %": 0.5388222807, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "NEWGEN", "LTP": 481.9, "Profit/Loss %": -50.4, "Todays Profit/Loss %": 0.21, "Weight %": 0.3529023038, "Portfolio Bucket": "Deep loss review", "Coordination Priority": "High", "Suggested Discussion": "Decide whether thesis is still valid; avoid averaging without fresh reason."}, {"Symbol": "ACUTAAS", "LTP": 3694.8, "Profit/Loss %": 378.73, "Todays Profit/Loss %": 0.08, "Weight %": 2.1646041619, "Portfolio Bucket": "Big winner", "Coordination Priority": "High", "Suggested Discussion": "Review position size and whether to protect gains with staged trimming rules."}, {"Symbol": "SUNTV", "LTP": 515.3, "Profit/Loss %": -17.76, "Todays Profit/Loss %": 0.08, "Weight %": 0.603778567, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "RELIANCE", "LTP": 1304.0, "Profit/Loss %": -1.68, "Todays Profit/Loss %": 0.04, "Weight %": 1.3369131475, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "CDSL", "LTP": 1350.6, "Profit/Loss %": 22.78, "Todays Profit/Loss %": -0.01, "Weight %": 1.8792212447, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "FORTIS", "LTP": 974.6, "Profit/Loss %": 6.02, "Todays Profit/Loss %": -0.04, "Weight %": 0.5709708824, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "HAL", "LTP": 4428.9, "Profit/Loss %": 7.22, "Todays Profit/Loss %": -0.12, "Weight %": 1.297338878, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "JSWHL", "LTP": 12341.0, "Profit/Loss %": -3.87, "Todays Profit/Loss %": -0.28, "Weight %": 0.8033326105, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "HEROMOTOCO", "LTP": 4852.6, "Profit/Loss %": 4.78, "Todays Profit/Loss %": -0.3, "Weight %": 0.4738171735, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "INDIGO", "LTP": 5426.5, "Profit/Loss %": 4.68, "Todays Profit/Loss %": -0.32, "Weight %": 0.7947808058, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "TITAN", "LTP": 4461.1, "Profit/Loss %": 25.73, "Todays Profit/Loss %": -0.45, "Weight %": 0.9800783155, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "BSE", "LTP": 3816.6, "Profit/Loss %": 116.16, "Todays Profit/Loss %": -0.47, "Weight %": 1.6769706569, "Portfolio Bucket": "Big winner", "Coordination Priority": "High", "Suggested Discussion": "Review position size and whether to protect gains with staged trimming rules."}, {"Symbol": "ADANIPORTS", "LTP": 1874.2, "Profit/Loss %": 30.77, "Todays Profit/Loss %": -0.48, "Weight %": 1.9215050775, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "CUB", "LTP": 216.76, "Profit/Loss %": 17.8, "Todays Profit/Loss %": -0.48, "Weight %": 3.1747293367, "Portfolio Bucket": "Core position", "Coordination Priority": "Medium", "Suggested Discussion": "Large allocation; confirm conviction and risk limit."}, {"Symbol": "PILANIINVS", "LTP": 4415.7, "Profit/Loss %": 23.65, "Todays Profit/Loss %": -0.48, "Weight %": 1.7605594623, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "TMPV", "LTP": 344.1, "Profit/Loss %": -20.64, "Todays Profit/Loss %": -0.53, "Weight %": 0.5291777002, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "KOTAKBANK", "LTP": 396.75, "Profit/Loss %": 9.98, "Todays Profit/Loss %": -0.64, "Weight %": 1.9531129871, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "HDFCLIFE", "LTP": 567.7, "Profit/Loss %": -8.15, "Todays Profit/Loss %": -0.64, "Weight %": 1.1224841714, "Portfolio Bucket": "Monitor", "Coordination Priority": "Medium", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "BAJAJ-AUTO", "LTP": 9785.5, "Profit/Loss %": 14.46, "Todays Profit/Loss %": -0.73, "Weight %": 0.4777374965, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "TECHM", "LTP": 1410.1, "Profit/Loss %": 1.27, "Todays Profit/Loss %": -0.79, "Weight %": 1.4456911268, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "LT", "LTP": 4026.6, "Profit/Loss %": 6.97, "Todays Profit/Loss %": -0.81, "Weight %": 2.6538634048, "Portfolio Bucket": "Core position", "Coordination Priority": "Medium", "Suggested Discussion": "Large allocation; confirm conviction and risk limit."}, {"Symbol": "VOLTAS", "LTP": 1280.2, "Profit/Loss %": -0.26, "Todays Profit/Loss %": -0.81, "Weight %": 1.5000142081, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "AETHER", "LTP": 1359.6, "Profit/Loss %": 13.62, "Todays Profit/Loss %": -0.93, "Weight %": 0.796523714, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "GMDCLTD", "LTP": 603.1, "Profit/Loss %": -10.51, "Todays Profit/Loss %": -0.94, "Weight %": 0.7066540923, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "PFC", "LTP": 425.8, "Profit/Loss %": -7.89, "Todays Profit/Loss %": -0.99, "Weight %": 0.4989111466, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "MANAKSIA", "LTP": 58.32, "Profit/Loss %": -22.53, "Todays Profit/Loss %": -1.07, "Weight %": 0.3971897487, "Portfolio Bucket": "Loss review", "Coordination Priority": "Medium", "Suggested Discussion": "Check support, results risk, and whether capital should rotate to stronger names."}, {"Symbol": "FEDERALBNK", "LTP": 327.4, "Profit/Loss %": 77.62, "Todays Profit/Loss %": -1.09, "Weight %": 2.5174771731, "Portfolio Bucket": "Big winner", "Coordination Priority": "High", "Suggested Discussion": "Review position size and whether to protect gains with staged trimming rules."}, {"Symbol": "SBIN", "LTP": 1040.0, "Profit/Loss %": 34.98, "Todays Profit/Loss %": -1.1, "Weight %": 2.8179457667, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "M&M", "LTP": 3136.9, "Profit/Loss %": 5.34, "Todays Profit/Loss %": -1.21, "Weight %": 1.9909040711, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "ZENTEC", "LTP": 1746.7, "Profit/Loss %": 20.01, "Todays Profit/Loss %": -1.49, "Weight %": 0.6395667711, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "INDIANB", "LTP": 798.95, "Profit/Loss %": 0.15, "Todays Profit/Loss %": -1.98, "Weight %": 1.5797229677, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "MARICO", "LTP": 838.55, "Profit/Loss %": 27.99, "Todays Profit/Loss %": -2.04, "Weight %": 0.6140822304, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "KPL", "LTP": 2678.7, "Profit/Loss %": 67.59, "Todays Profit/Loss %": -2.43, "Weight %": 0.7846602209, "Portfolio Bucket": "Winner", "Coordination Priority": "Medium", "Suggested Discussion": "Hold if trend remains intact; discuss partial profit protection."}, {"Symbol": "ACE", "LTP": 989.9, "Profit/Loss %": -1.36, "Todays Profit/Loss %": -2.64, "Weight %": 0.5154972538, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "JSWENERGY", "LTP": 550.2, "Profit/Loss %": 3.68, "Todays Profit/Loss %": -2.68, "Weight %": 0.6849629401, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "NELCAST", "LTP": 142.78, "Profit/Loss %": 0.85, "Todays Profit/Loss %": -2.73, "Weight %": 0.6587270448, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "AHLUCONT", "LTP": 829.4, "Profit/Loss %": 12.92, "Todays Profit/Loss %": -3.12, "Weight %": 0.5466433984, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "SANDHAR", "LTP": 699.35, "Profit/Loss %": -1.58, "Todays Profit/Loss %": -3.83, "Weight %": 0.4609296608, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "Monitor; discuss only if technical structure weakens."}, {"Symbol": "BHEL", "LTP": 383.6, "Profit/Loss %": 6.37, "Todays Profit/Loss %": -4.57, "Weight %": 0.927022138, "Portfolio Bucket": "Monitor", "Coordination Priority": "Low", "Suggested Discussion": "No urgent action; keep in review list."}, {"Symbol": "THERMAX", "LTP": 4607.5, "Profit/Loss %": 5.71, "Todays Profit/Loss %": -6.29, "Weight %": 0.4498851393, "Portfolio Bucket": "Event watch", "Coordination Priority": "High", "Suggested Discussion": "Sharp daily fall; identify event reason before taking action."}, {"Symbol": "CGPOWER", "LTP": 892.55, "Profit/Loss %": 19.3, "Todays Profit/Loss %": -6.97, "Weight %": 1.0458035318, "Portfolio Bucket": "Event watch", "Coordination Priority": "High", "Suggested Discussion": "Sharp daily fall; identify event reason before taking action."}, {"Symbol": "ENRIN", "LTP": 3281.5, "Profit/Loss %": 6.87, "Todays Profit/Loss %": -7.55, "Weight %": 1.9224717325, "Portfolio Bucket": "Event watch", "Coordination Priority": "High", "Suggested Discussion": "Sharp daily fall; identify event reason before taking action."}]};
+    let selected = null;
+
+    const money = value => Number.isFinite(Number(value))
+      ? 'Rs ' + Number(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+      : '-';
+    const pct = value => Number.isFinite(Number(value)) ? Number(value).toFixed(2) + '%' : '-';
+    const num = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-';
+    const safe = value => value === null || value === undefined ? '-' : String(value);
+    const tone = value => Number(value) > 0 ? 'positive' : Number(value) < 0 ? 'negative' : 'flat';
+    const slug = value => String(value || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unknown';
+    const pill = (type, value) => `<span class="pill ${type}-${slug(value)}">${safe(value)}</span>`;
+
+    function metric(label, value, klass = '') {
+      return `<div class="metric"><div class="label">${label}</div><div class="value ${klass}">${value}</div></div>`;
+    }
+
+    function renderMetrics() {
+      const s = DATA.summary;
+      const cells = [
+        metric('Holdings', s.holdings),
+        
+        metric('Return', pct(s.returnPct), tone(s.returnPct)),
+        metric('Today', DATA.safe ? pct(s.todayPct) : money(s.todayProfitLoss), DATA.safe ? tone(s.todayPct) : tone(s.todayProfitLoss)),
+        metric('High Priority', s.highPriority, s.highPriority ? 'negative' : 'positive'),
+        metric('Deep Losses', s.deepLosses, s.deepLosses ? 'negative' : 'positive'),
+      ];
+      document.getElementById('metrics').innerHTML = cells.join('');
+    }
+
+    function renderBuckets() {
+      document.getElementById('bucketRows').innerHTML = DATA.bucketRows.map(row => `
+        <div class="bucket-row">
+          <div>${pill('bucket', row.bucket)} <span class="muted">${row.count} holdings</span></div>
+          <div class="bar"><span style="width:${Math.max(2, Number(row.weightPct) || 0)}%"></span></div>
+          <div class="${tone(row.weightPct)}">${pct(row.weightPct)}</div>
+          <div class="${tone(row.avgPnlPct)}">${pct(row.avgPnlPct)}</div>
+        </div>
+      `).join('');
+    }
+
+    function safeValueCells(row) {
+      if (DATA.safe) return '';
+      return `<td class="num">${money(row['Current Value'])}</td><td class="num ${tone(row['Profit/Loss'])}">${money(row['Profit/Loss'])}</td>`;
+    }
+
+    function rowHtml(row) {
+      const symbol = safe(row.Symbol).replaceAll("'", "\\'");
+      return `
+        <tr onclick="selectHolding('${symbol}')" class="${selected === row.Symbol ? 'selected' : ''}">
+          <td><strong>${safe(row.Symbol)}</strong></td>
+          <td>${pill('priority', row['Coordination Priority'])}</td>
+          <td>${pill('bucket', row['Portfolio Bucket'])}</td>
+          <td class="num ${tone(row['Weight %'])}">${pct(row['Weight %'])}</td>
+          ${safeValueCells(row)}
+          <td class="num ${tone(row['Profit/Loss %'])}">${pct(row['Profit/Loss %'])}</td>
+          <td class="num ${tone(row['Todays Profit/Loss %'])}">${pct(row['Todays Profit/Loss %'])}</td>
+          <td class="num">${num(row.LTP)}</td>
+        </tr>
+      `;
+    }
+
+    function renderQueue() {
+      const rank = { High: 0, Medium: 1, Low: 2 };
+      const rows = DATA.holdings
+        .filter(row => ['High', 'Medium'].includes(row['Coordination Priority']))
+        .sort((a, b) => (rank[a['Coordination Priority']] ?? 9) - (rank[b['Coordination Priority']] ?? 9)
+          || Number(b['Weight %'] || 0) - Number(a['Weight %'] || 0));
+      document.querySelector('#queueTable tbody').innerHTML = rows.map(row => `
+        <tr onclick="selectHolding('${safe(row.Symbol).replaceAll("'", "\\'")}')" class="${selected === row.Symbol ? 'selected' : ''}">
+          <td><strong>${safe(row.Symbol)}</strong></td>
+          <td>${pill('priority', row['Coordination Priority'])}</td>
+          <td>${pill('bucket', row['Portfolio Bucket'])}</td>
+          <td class="num ${tone(row['Weight %'])}">${pct(row['Weight %'])}</td>
+          <td class="num ${tone(row['Profit/Loss %'])}">${pct(row['Profit/Loss %'])}</td>
+          <td class="num ${tone(row['Todays Profit/Loss %'])}">${pct(row['Todays Profit/Loss %'])}</td>
+          <td>${safe(row['Suggested Discussion'])}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderBucketFilter() {
+      const select = document.getElementById('bucket');
+      const buckets = [...new Set(DATA.holdings.map(row => row['Portfolio Bucket']).filter(Boolean))].sort();
+      select.innerHTML += buckets.map(bucket => `<option>${bucket}</option>`).join('');
+    }
+
+    function renderHoldings() {
+      const query = document.getElementById('search').value.toLowerCase();
+      const priority = document.getElementById('priority').value;
+      const bucket = document.getElementById('bucket').value;
+      const rows = DATA.holdings
+        .filter(row => !query || safe(row.Symbol).toLowerCase().includes(query))
+        .filter(row => !priority || row['Coordination Priority'] === priority)
+        .filter(row => !bucket || row['Portfolio Bucket'] === bucket)
+        .sort((a, b) => Number(b['Weight %'] || 0) - Number(a['Weight %'] || 0));
+      document.querySelector('#holdingsTable tbody').innerHTML = rows.map(rowHtml).join('');
+    }
+
+    function detailMetric(label, value, klass = '') {
+      return `<div><span class="k">${label}</span><span class="v ${klass}">${value}</span></div>`;
+    }
+
+    function renderDetail(row) {
+      const valueMetrics = DATA.safe ? '' : `
+        ${detailMetric('Current Value', money(row['Current Value']))}
+        ${detailMetric('Invested Value', money(row['Invested Value']))}
+        ${detailMetric('P&L Amount', money(row['Profit/Loss']), tone(row['Profit/Loss']))}
+        ${detailMetric('Quantity / Avg Price', safe(row.Quantity) + ' / ' + num(row['Avg. Price']))}
+      `;
+      document.getElementById('detail').innerHTML = `
+        <div class="detail-title">
+          <strong>${safe(row.Symbol)}</strong>
+          <div class="muted">${pill('priority', row['Coordination Priority'])} ${pill('bucket', row['Portfolio Bucket'])}</div>
+        </div>
+        <div class="kv">
+          ${detailMetric('Weight', pct(row['Weight %']), tone(row['Weight %']))}
+          ${detailMetric('P&L %', pct(row['Profit/Loss %']), tone(row['Profit/Loss %']))}
+          ${detailMetric('Today', pct(row['Todays Profit/Loss %']), tone(row['Todays Profit/Loss %']))}
+          ${detailMetric('LTP', num(row.LTP))}
+          ${valueMetrics}
+        </div>
+        <div class="note"><strong>Discussion:</strong> ${safe(row['Suggested Discussion'])}</div>
+      `;
+    }
+
+    function selectHolding(symbol) {
+      selected = symbol;
+      const row = DATA.holdings.find(item => item.Symbol === symbol) || DATA.holdings[0];
+      renderDetail(row);
+      renderQueue();
+      renderHoldings();
+    }
+
+    renderMetrics();
+    renderBuckets();
+    renderBucketFilter();
+    selected = DATA.holdings[0]?.Symbol || null;
+    renderQueue();
+    renderHoldings();
+    renderDetail(DATA.holdings[0] || {});
+  </script>
+</body>
+</html>
