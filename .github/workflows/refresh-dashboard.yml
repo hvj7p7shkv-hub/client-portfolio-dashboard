@@ -2,6 +2,14 @@ name: Refresh portfolio dashboard
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/refresh-dashboard.yml"
+      - "scripts/**"
+      - "requirements.txt"
+      - ".refresh-dashboard"
   schedule:
     # GitHub cron uses UTC. This is every 30 minutes from 09:30 to 15:30 IST, Monday-Friday.
     - cron: "*/30 4-10 * * 1-5"
