@@ -16,4 +16,11 @@ The dashboard refreshes through GitHub Actions.
 - If a symbol cannot be downloaded, the script keeps the last CSV value for that stock.
 - If technical data cannot be downloaded, the dashboard marks that stock as `Not downloaded` instead of failing the whole page.
 
-After the workflow commits the refreshed `index.html`, GitHub Pages should update the public link automatically.
+After the workflow commits the refreshed `index.html`, the host updates the public link automatically.
+
+## Hosting
+
+Live site: https://investezee-client-portfolio-dashboard.netlify.app/ (Netlify,
+auto-deploys every push to `main`; see `netlify.toml`). The GitHub Pages URL
+https://hvj7p7shkv-hub.github.io/client-portfolio-dashboard/ is kept as a
+temporary fallback.
