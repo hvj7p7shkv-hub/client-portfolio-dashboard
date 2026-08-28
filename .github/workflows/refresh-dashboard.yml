@@ -3,8 +3,9 @@ name: Refresh portfolio dashboard
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron uses UTC. This is every 30 minutes from 09:30 to 15:30 IST, Monday-Friday.
-    - cron: "*/30 4-10 * * 1-5"
+    # GitHub cron uses UTC. Hourly at :47 past on weekdays, ~09:17 IST through
+    # 16:17 IST. Offset from :00 to reduce scheduler congestion.
+    - cron: "47 3-10 * * 1-5"
 
 permissions:
   contents: write
