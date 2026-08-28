@@ -12,7 +12,10 @@ permissions:
 
 concurrency:
   group: refresh-portfolio-dashboard
-  cancel-in-progress: true
+  # Let an in-progress refresh finish and commit; a new run queues behind it.
+  # (Cancelling mid-run was leaving the dashboard un-updated when a refresh
+  # took longer than the schedule interval.)
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -50,5 +53,8 @@ jobs:
             echo "No dashboard changes to commit."
           else
             git commit -m "Refresh client portfolio dashboard"
-            git push
+            # Rebase onto any commit that landed during this long refresh so a
+            # benign concurrent update doesn't reject an otherwise-valid push.
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
