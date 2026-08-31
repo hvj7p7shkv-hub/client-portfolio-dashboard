@@ -271,7 +271,9 @@ def load_watchlist_charts(source: Path) -> dict[str, list[dict[str, object]]]:
             continue
         entry = {
             "date": str(row.get("Date", "")).strip(),
-            "src": f"{CHART_DIR_NAME}/{file_name}",
+            # Dashboard HTML is published at the site root next to data/, so
+            # the image URL keeps the data/ prefix.
+            "src": f"data/{CHART_DIR_NAME}/{file_name}",
             "caption": str(row.get("Caption", "")).strip(),
             "missing": not (source.parent / CHART_DIR_NAME / file_name).exists(),
         }
