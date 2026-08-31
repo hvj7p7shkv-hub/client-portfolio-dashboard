@@ -245,24 +245,69 @@ AI_WIDGET = """
 """.replace("__AI_ENDPOINT__", AI_ENDPOINT)
 
 
+CHART_DIR_NAME = "watchlist_charts"
+
+
+def load_watchlist_charts(source: Path) -> dict[str, list[dict[str, object]]]:
+    """Read data/watchlist_charts.csv -> {TICKER: [{date, src, caption}, ...]}.
+
+    Each row is an annotated chart image (saved under data/watchlist_charts/)
+    the advisor wants pinned to a watch-list name so a running visual record
+    builds up over time. Rows are returned oldest-first. A row whose image
+    file is missing on disk is kept but flagged so it shows as pending.
+    """
+    charts_csv = source.parent / "watchlist_charts.csv"
+    by_ticker: dict[str, list[dict[str, object]]] = {}
+    if not charts_csv.exists():
+        return by_ticker
+    try:
+        frame = pd.read_csv(charts_csv, dtype=str).fillna("")
+    except (ValueError, OSError):
+        return by_ticker
+    for _, row in frame.iterrows():
+        ticker = str(row.get("Ticker", "")).strip().upper()
+        file_name = str(row.get("File", "")).strip()
+        if not ticker or not file_name:
+            continue
+        entry = {
+            "date": str(row.get("Date", "")).strip(),
+            "src": f"{CHART_DIR_NAME}/{file_name}",
+            "caption": str(row.get("Caption", "")).strip(),
+            "missing": not (source.parent / CHART_DIR_NAME / file_name).exists(),
+        }
+        by_ticker.setdefault(ticker, []).append(entry)
+    for entries in by_ticker.values():
+        entries.sort(key=lambda item: item["date"])
+    return by_ticker
+
+
 def load_watchlist(source: Path) -> dict[str, object]:
-    """Read data/watchlist_status.json (written by refresh_watchlist.py).
+    """Read data/watchlist_status.json (written by refresh_watchlist.py) and
+    attach any annotated charts from data/watchlist_charts.csv.
 
     Falls back to the bare SUGGESTED_ADDS name list when the enriched file is
     missing, so the dashboard still builds on a fresh checkout.
     """
+    charts = load_watchlist_charts(source)
     candidate = source.parent / "watchlist_status.json"
+    payload: dict[str, object] | None = None
     if candidate.exists():
         try:
             loaded = json.loads(candidate.read_text(encoding="utf-8"))
             if isinstance(loaded, dict) and loaded.get("records"):
-                return loaded
+                payload = loaded
         except (ValueError, OSError):
-            pass
-    return {
-        "generatedAt": None,
-        "records": [{"name": name, "dateAdded": None} for name in SUGGESTED_ADDS],
-    }
+            payload = None
+    if payload is None:
+        payload = {
+            "generatedAt": None,
+            "records": [{"name": name, "dateAdded": None} for name in SUGGESTED_ADDS],
+        }
+
+    for record in payload.get("records", []):
+        ticker = str(record.get("ticker", "")).strip().upper()
+        record["charts"] = charts.get(ticker, [])
+    return payload
 
 
 def clean_number(series: pd.Series) -> pd.Series:
@@ -624,6 +669,20 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     #watchlistTable tr.below-key:hover td {{ background: #ffe9eb; }}
     .keytag {{ display: inline-flex; border-radius: 999px; padding: 3px 8px; font-size: 12px; font-weight: 750; border: 1px solid var(--line); background: #eef9f4; color: var(--green); border-color: #bbdacc; white-space: nowrap; }}
     .keytag.warn {{ background: #fff3f4; color: var(--red); border-color: #edc3c8; }}
+    #watchlistTable tbody tr.wl-row {{ cursor: pointer; }}
+    .chartbadge {{ display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 750; border: 1px solid #c5d9ea; background: #edf5fc; color: var(--blue); white-space: nowrap; }}
+    .chartbadge.none {{ color: var(--muted); background: #f8faf5; border-color: var(--line); font-weight: 600; }}
+    tr.chart-row > td {{ background: #fbfcf8; padding: 0; }}
+    tr.chart-row.hidden {{ display: none; }}
+    .wl-charts {{ padding: 14px 16px 6px; display: grid; gap: 18px; max-width: 940px; position: sticky; left: 0; }}
+    .wl-chart {{ border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }}
+    .wl-chart figcaption {{ display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; padding: 10px 13px; border-bottom: 1px solid var(--line); }}
+    .wl-chart figcaption .cdate {{ font-weight: 780; font-size: 13px; }}
+    .wl-chart figcaption .ctext {{ color: var(--muted); font-size: 13px; line-height: 1.45; }}
+    .wl-chart img {{ display: block; width: 100%; height: auto; }}
+    .wl-chart a.cfull {{ display: inline-block; padding: 8px 13px; font-size: 12px; font-weight: 700; color: var(--blue); }}
+    .wl-chart.missing {{ padding: 14px; color: var(--muted); font-size: 13px; }}
+    .wl-empty {{ padding: 14px 16px; color: var(--muted); font-size: 13px; }}
     @media (max-width: 1100px) {{
       .metrics {{ grid-template-columns: repeat(3, minmax(145px, 1fr)); }}
       .guide-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -697,7 +756,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
             <div class="muted">Watch list — not holdings, not in portfolio value</div>
           </div>
           <div class="add-stack">
-            <p class="add-intro">Names to consider adding to this portfolio, each tracked from the day it entered the filter. Not owned and excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard. Watch new additions closely early &mdash; a row is flagged red once price closes below its 50- or 200-DMA. Every name stays listed here until removed; scroll the table to the end so none of the lower rows are missed.</p>
+            <p class="add-intro">Names to consider adding to this portfolio, each tracked from the day it entered the filter. Not owned and excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard. Watch new additions closely early &mdash; a row is flagged red once price closes below its 50- or 200-DMA. Every name stays listed here until removed; scroll the table to the end so none of the lower rows are missed. Click a row to open its annotated charts &mdash; a running visual record that grows as points worth flagging come up.</p>
             <p class="add-generated" id="watchlistGenerated"></p>
           </div>
           <div class="small-table watchlist-scroll">
@@ -715,6 +774,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
                   <th>RSI</th>
                   <th>RS vs 50D</th>
                   <th>Status</th>
+                  <th>Charts</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -977,6 +1037,42 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       return `<span class="${{cls}}">${{above ? 'Above' : 'Below'}}${{gap}}</span>`;
     }}
 
+    function esc(value) {{
+      return String(value === null || value === undefined ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }}
+
+    function watchChartsHtml(row) {{
+      const charts = Array.isArray(row.charts) ? row.charts : [];
+      const name = esc(row.name);
+      if (!charts.length) {{
+        return `<div class="wl-empty">No annotated charts pinned to ${{name}} yet. Add one to <code>data/watchlist_charts.csv</code> (with the image under <code>data/watchlist_charts/</code>) and it appears here, newest last.</div>`;
+      }}
+      const items = charts.map(chart => {{
+        if (chart.missing) {{
+          return `<figure class="wl-chart missing">Image <code>${{esc(chart.src)}}</code> is listed for ${{esc(chart.date)}} but not in the repo yet.</figure>`;
+        }}
+        const cap = chart.caption
+          ? `<span class="ctext">${{esc(chart.caption)}}</span>` : '';
+        return `
+          <figure class="wl-chart">
+            <figcaption><span class="cdate">${{esc(chart.date)}}</span>${{cap}}</figcaption>
+            <img loading="lazy" src="${{esc(chart.src)}}" alt="Annotated chart for ${{name}}, ${{esc(chart.date)}}">
+            <a class="cfull" href="${{esc(chart.src)}}" target="_blank" rel="noopener">Open full size &#8599;</a>
+          </figure>`;
+      }}).join('');
+      return `<div class="wl-charts">${{items}}</div>`;
+    }}
+
+    function toggleWatchCharts(index) {{
+      const panel = document.getElementById(`wl-charts-${{index}}`);
+      if (!panel) return;
+      const open = panel.classList.toggle('hidden');
+      const trigger = panel.previousElementSibling;
+      if (trigger) trigger.setAttribute('aria-expanded', String(!open));
+    }}
+
     function renderWatchlist() {{
       const body = document.querySelector('#watchlistTable tbody');
       if (!body) return;
@@ -985,7 +1081,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       const gen = document.getElementById('watchlistGenerated');
       if (gen) gen.textContent = wl.generatedAt ? `Watch-list technicals updated ${{wl.generatedAt}}` : '';
 
-      body.innerHTML = rows.map(row => {{
+      body.innerHTML = rows.map((row, index) => {{
         const below = row.belowKeyLevel === true;
         const keyClass = below ? 'keytag warn' : 'keytag';
         const keyText = safe(row.keyLevel || (row.downloaded ? 'Above key levels' : 'Awaiting data'));
@@ -994,8 +1090,12 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         const status = row.downloaded
           ? pill('technical-status', row.technicalStatus || 'Not downloaded')
           : `<span class="muted">${{row.error ? 'No data' : 'Pending'}}</span>`;
+        const charts = Array.isArray(row.charts) ? row.charts : [];
+        const badge = charts.length
+          ? `<span class="chartbadge">&#128200; ${{charts.length}}</span>`
+          : `<span class="chartbadge none">&#128200; add</span>`;
         return `
-        <tr class="${{below ? 'below-key' : ''}}">
+        <tr class="wl-row ${{below ? 'below-key' : ''}}" onclick="toggleWatchCharts(${{index}})" aria-expanded="false">
           <td class="name"><strong>${{safe(row.name)}}</strong><span class="muted">${{safe(row.ticker || '')}}</span></td>
           <td>${{safe(row.dateAdded)}}</td>
           <td class="num">${{Number.isFinite(Number(row.daysTracked)) ? row.daysTracked : '-'}}</td>
@@ -1007,7 +1107,9 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
           <td class="num">${{num(row.rsi14)}}</td>
           <td class="num ${{tone(row.rsVs50Pct)}}">${{pct(row.rsVs50Pct)}}</td>
           <td>${{status}}</td>
-        </tr>`;
+          <td>${{badge}}</td>
+        </tr>
+        <tr class="chart-row hidden" id="wl-charts-${{index}}"><td colspan="12">${{watchChartsHtml(row)}}</td></tr>`;
       }}).join('');
 
       const held = document.getElementById('suggestedHeld');
