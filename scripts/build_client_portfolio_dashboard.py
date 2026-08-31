@@ -230,7 +230,7 @@ AI_WIDGET = """
     bubble('user',q);hist.push({role:'user',content:q});
     input.value='';send.disabled=true;
     var wait=bubble('bot','\\u2026');
-    fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch(endpoint,{method:'POST',referrerPolicy:'unsafe-url',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({context:context,messages:hist})})
     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
     .then(function(res){
