@@ -91,6 +91,26 @@ SUGGESTED_ADDS_ALREADY_HELD = [
 ]
 
 
+def load_watchlist(source: Path) -> dict[str, object]:
+    """Read data/watchlist_status.json (written by refresh_watchlist.py).
+
+    Falls back to the bare SUGGESTED_ADDS name list when the enriched file is
+    missing, so the dashboard still builds on a fresh checkout.
+    """
+    candidate = source.parent / "watchlist_status.json"
+    if candidate.exists():
+        try:
+            loaded = json.loads(candidate.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict) and loaded.get("records"):
+                return loaded
+        except (ValueError, OSError):
+            pass
+    return {
+        "generatedAt": None,
+        "records": [{"name": name, "dateAdded": None} for name in SUGGESTED_ADDS],
+    }
+
+
 def clean_number(series: pd.Series) -> pd.Series:
     return pd.to_numeric(
         series.astype(str)
@@ -330,8 +350,8 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         "summary": summary(data, safe),
         "bucketRows": bucket_rows(data),
         "holdings": records(data, safe),
-        "suggestedAdds": SUGGESTED_ADDS,
         "suggestedAddsHeld": SUGGESTED_ADDS_ALREADY_HELD,
+        "watchlist": load_watchlist(source),
     }
     payload_json = json.dumps(payload, ensure_ascii=True)
     value_metric = "" if safe else """
@@ -433,9 +453,14 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .note {{ margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }}
     .note strong {{ color: var(--ink); }}
     .add-stack {{ padding: 14px 18px 18px; }}
-    .add-stack .add-intro {{ margin: 0 0 14px; color: var(--muted); line-height: 1.5; }}
-    .add-grid {{ display: flex; flex-wrap: wrap; gap: 9px; }}
-    .add-grid .pill {{ font-size: 14px; padding: 7px 12px; background: #eef9f4; border-color: #bbdacc; color: var(--green); }}
+    .add-stack .add-intro {{ margin: 0 0 6px; color: var(--muted); line-height: 1.5; }}
+    .add-generated {{ color: var(--muted); font-size: 12px; margin: 0 0 12px; }}
+    #watchlistTable td.name strong {{ display: block; }}
+    #watchlistTable td.name .muted {{ font-size: 12px; }}
+    #watchlistTable tr.below-key td {{ background: #fff3f4; }}
+    #watchlistTable tr.below-key:hover td {{ background: #ffe9eb; }}
+    .keytag {{ display: inline-flex; border-radius: 999px; padding: 3px 8px; font-size: 12px; font-weight: 750; border: 1px solid var(--line); background: #eef9f4; color: var(--green); border-color: #bbdacc; white-space: nowrap; }}
+    .keytag.warn {{ background: #fff3f4; color: var(--red); border-color: #edc3c8; }}
     @media (max-width: 1100px) {{
       .metrics {{ grid-template-columns: repeat(3, minmax(145px, 1fr)); }}
       .guide-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -509,8 +534,30 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
             <div class="muted">Watch list — not holdings, not in portfolio value</div>
           </div>
           <div class="add-stack">
-            <p class="add-intro">Names to consider adding to this portfolio. These are not owned and are excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard.</p>
-            <div id="suggestedAdds" class="add-grid"></div>
+            <p class="add-intro">Names to consider adding to this portfolio, each tracked from the day it entered the filter. Not owned and excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard. Watch new additions closely early &mdash; a row is flagged red once price closes below its 50- or 200-DMA.</p>
+            <p class="add-generated" id="watchlistGenerated"></p>
+          </div>
+          <div class="small-table">
+            <table id="watchlistTable">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Added</th>
+                  <th>Days</th>
+                  <th>Since Added</th>
+                  <th>Low Since</th>
+                  <th>Key Levels</th>
+                  <th>50DMA</th>
+                  <th>200DMA</th>
+                  <th>RSI</th>
+                  <th>RS vs 50D</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="add-stack">
             <div class="note" id="suggestedHeld"></div>
           </div>
         </section>
@@ -750,13 +797,52 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       document.getElementById('metrics').innerHTML = cells.join('');
     }}
 
-    function renderSuggestedAdds() {{
-      const grid = document.getElementById('suggestedAdds');
-      if (!grid) return;
-      const names = DATA.suggestedAdds || [];
-      grid.innerHTML = names.length
-        ? names.map(name => `<span class="pill">${{safe(name)}}</span>`).join('')
-        : '<span class="muted">None</span>';
+    function signedPct(value) {{
+      if (!Number.isFinite(Number(value))) return '-';
+      const n = Number(value);
+      return `${{n >= 0 ? '+' : ''}}${{n.toFixed(2)}}%`;
+    }}
+
+    function dmaCell(above, distance) {{
+      if (above === null || above === undefined) return '<span class="muted">-</span>';
+      const cls = above ? 'positive' : 'negative';
+      const gap = Number.isFinite(Number(distance)) ? ` · ${{signedPct(distance)}}` : '';
+      return `<span class="${{cls}}">${{above ? 'Above' : 'Below'}}${{gap}}</span>`;
+    }}
+
+    function renderWatchlist() {{
+      const body = document.querySelector('#watchlistTable tbody');
+      if (!body) return;
+      const wl = DATA.watchlist || {{}};
+      const rows = wl.records || [];
+      const gen = document.getElementById('watchlistGenerated');
+      if (gen) gen.textContent = wl.generatedAt ? `Watch-list technicals updated ${{wl.generatedAt}}` : '';
+
+      body.innerHTML = rows.map(row => {{
+        const below = row.belowKeyLevel === true;
+        const keyClass = below ? 'keytag warn' : 'keytag';
+        const keyText = safe(row.keyLevel || (row.downloaded ? 'Above key levels' : 'Awaiting data'));
+        const since = row.sinceAddedPct;
+        const low = row.drawdownSincePct;
+        const status = row.downloaded
+          ? pill('technical-status', row.technicalStatus || 'Not downloaded')
+          : `<span class="muted">${{row.error ? 'No data' : 'Pending'}}</span>`;
+        return `
+        <tr class="${{below ? 'below-key' : ''}}">
+          <td class="name"><strong>${{safe(row.name)}}</strong><span class="muted">${{safe(row.ticker || '')}}</span></td>
+          <td>${{safe(row.dateAdded)}}</td>
+          <td class="num">${{Number.isFinite(Number(row.daysTracked)) ? row.daysTracked : '-'}}</td>
+          <td class="num ${{tone(since)}}">${{signedPct(since)}}</td>
+          <td class="num ${{tone(low)}}">${{signedPct(low)}}</td>
+          <td><span class="${{keyClass}}">${{keyText}}</span></td>
+          <td class="num">${{dmaCell(row.above50DMA, row.dist50DMAPct)}}</td>
+          <td class="num">${{dmaCell(row.above200DMA, row.dist200DMAPct)}}</td>
+          <td class="num">${{num(row.rsi14)}}</td>
+          <td class="num ${{tone(row.rsVs50Pct)}}">${{pct(row.rsVs50Pct)}}</td>
+          <td>${{status}}</td>
+        </tr>`;
+      }}).join('');
+
       const held = document.getElementById('suggestedHeld');
       const owned = DATA.suggestedAddsHeld || [];
       if (held) {{
@@ -959,7 +1045,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     }}
 
     renderMetrics();
-    renderSuggestedAdds();
+    renderWatchlist();
     renderBuckets();
     renderTechnicalTable();
     renderLaggardsTable();
