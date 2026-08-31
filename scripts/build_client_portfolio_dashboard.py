@@ -90,6 +90,160 @@ SUGGESTED_ADDS_ALREADY_HELD = [
     "Aurobindo Pharma",
 ]
 
+# --- "Ask about this dashboard" assistant -------------------------------------
+# A floating panel that talks to the Investezee AI worker (ai.investezee.com),
+# the same explain-only proxy the public portfolio report uses. It is handed a
+# figures-only slice of this dashboard (percentages and technical readings, no
+# rupee amounts / quantities / cost, none of the "Suggested Discussion" text)
+# and the worker's system prompt forbids it from ever suggesting an action.
+# Self-contained: its own <style>, no shared CSS vars, endpoint hard-coded.
+AI_ENDPOINT = "https://ai.investezee.com/"
+
+AI_TECHNICAL_FIELDS = [
+    "Technical Status", "RS vs 50D %", "RS 3M %", "RSI 14", "P&F Signal",
+    "Above 50DMA", "Above 200DMA", "200DMA Distance %", "52W High Distance %",
+]
+
+
+def ai_context(data: pd.DataFrame) -> dict[str, object]:
+    """A compact, figures-only view of the dashboard for the assistant.
+
+    Percentages and technical readings only — no rupee amounts, quantities,
+    cost basis, or the 'Suggested Discussion' text. Capped at the 60 largest
+    positions so the whole slice stays inside the worker's context limit."""
+    tech = [f for f in AI_TECHNICAL_FIELDS if f in data.columns]
+    cols = [c for c in (["Symbol", "Weight %", "Profit/Loss %", "Portfolio Bucket"] + tech)
+            if c in data.columns]
+    ranked = data.sort_values("Weight %", ascending=False) if "Weight %" in data.columns else data
+    frame = ranked[cols].head(60).where(pd.notna(ranked[cols].head(60)), None)
+    holdings = json.loads(frame.to_json(orient="records"))
+    holdings = [
+        {k: (round(v, 2) if isinstance(v, float) else v) for k, v in row.items()}
+        for row in holdings
+    ]
+    total = float(data["Current Value"].sum())
+    invested = float(data["Invested Value"].sum())
+    above50 = above200 = None
+    if "Above 50DMA" in data.columns and len(data):
+        above50 = round(float((data["Above 50DMA"].astype(str) == "True").mean() * 100), 1)
+    if "Above 200DMA" in data.columns and len(data):
+        above200 = round(float((data["Above 200DMA"].astype(str) == "True").mean() * 100), 1)
+    return {
+        "what": "Client portfolio dashboard — technical + P&L snapshot of one person's stock holdings.",
+        "generatedAt": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "benchmark": "Nifty Midcap 50 (^NSEMDCP50)",
+        "portfolio": {
+            "holdings": int(len(data)),
+            "returnPct": round((total / invested - 1) * 100, 2) if invested else None,
+            "pctAbove50DMA": above50,
+            "pctAbove200DMA": above200,
+        },
+        "holdings": holdings,
+    }
+
+
+AI_WIDGET = """
+<style>
+  .ai-fab{position:fixed;right:18px;bottom:18px;z-index:60;display:inline-flex;align-items:center;
+  gap:8px;padding:12px 18px;border:0;border-radius:999px;background:#171916;color:#fff;
+  font:inherit;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 8px 24px rgba(23,25,22,.26)}
+  .ai-fab .dot{width:8px;height:8px;border-radius:50%;background:#3fd9a8;box-shadow:0 0 0 3px rgba(63,217,168,.28)}
+  body.ai-open .ai-fab{opacity:0;pointer-events:none}
+  .ai-dock{position:fixed;right:18px;bottom:18px;z-index:61;width:min(390px,calc(100vw - 32px));
+  max-height:min(580px,calc(100vh - 32px));display:flex;flex-direction:column;background:#fffefa;
+  border:1px solid #dce2d7;border-radius:14px;overflow:hidden;box-shadow:0 20px 54px rgba(0,0,0,.24);
+  transform:translateY(16px) scale(.98);opacity:0;pointer-events:none;transition:transform .2s,opacity .2s}
+  body.ai-open .ai-dock{transform:none;opacity:1;pointer-events:auto}
+  .ai-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  padding:13px 15px;background:#171916;color:#fff}
+  .ai-head strong{font-size:15px}
+  .ai-head .ai-sub{font-size:12px;color:#b9c4c0;font-weight:500;margin-top:2px}
+  .ai-x{background:transparent;border:0;color:#fff;font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
+  .ai-body{padding:13px 15px;overflow-y:auto}
+  .ai-log{display:grid;gap:10px;margin:0 0 12px}
+  .ai-log:empty{display:none}
+  .ai-msg{padding:10px 13px;border-radius:10px;font-size:14px;line-height:1.5;max-width:88%;white-space:pre-wrap}
+  .ai-msg.user{justify-self:end;background:#f0f1ec;border:1px solid #dce2d7}
+  .ai-msg.bot{justify-self:start;background:#fff;border:1px solid #dce2d7}
+  .ai-msg.err{justify-self:start;background:#f8e9e7;border:1px solid #e6c9c7;color:#b33e45}
+  .ai-starters{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+  .ai-starter{border:1px solid #dce2d7;background:#fffefa;border-radius:999px;
+  padding:6px 12px;font-size:12.5px;color:#171916;cursor:pointer;font-family:inherit}
+  .ai-starter:hover{background:#f0f1ec}
+  .ai-form{display:flex;gap:8px}
+  .ai-form input{flex:1;padding:10px 12px;border:1px solid #dce2d7;border-radius:8px;
+  font-family:inherit;font-size:14px;background:#fff;color:#171916}
+  .ai-form button{padding:10px 18px;border:0;border-radius:8px;background:#171916;color:#fff;
+  font-weight:650;font-family:inherit;cursor:pointer}
+  .ai-form button:disabled{opacity:.5;cursor:default}
+  @media(max-width:520px){
+    .ai-dock{right:0;left:0;bottom:0;width:100%;max-height:82vh;border-radius:16px 16px 0 0}
+    body.ai-open .ai-fab{display:none}
+  }
+</style>
+<button class="ai-fab" id="ai-fab" aria-label="Ask about this dashboard">
+  <span class="dot"></span>Ask about this dashboard</button>
+<div class="ai-dock" id="ai-dock">
+  <div class="ai-head"><div><strong>Ask about this dashboard</strong>
+  <div class="ai-sub">Explains the figures &mdash; never advises</div></div>
+  <button class="ai-x" id="ai-close" aria-label="Close">&times;</button></div>
+  <div class="ai-body">
+    <div class="ai-log" id="ai-log"></div>
+    <div class="ai-starters" id="ai-starters">
+      <button class="ai-starter" type="button">What does RS vs 50D mean here?</button>
+      <button class="ai-starter" type="button">Which holdings are below their 200-DMA?</button>
+      <button class="ai-starter" type="button">Explain the RSI 14 column</button>
+      <button class="ai-starter" type="button">What is a Point &amp; Figure signal?</button>
+    </div>
+    <form class="ai-form" id="ai-form">
+      <input id="ai-input" autocomplete="off" placeholder="Ask about a number&hellip;" maxlength="500">
+      <button type="submit" id="ai-send">Ask</button></form>
+    <p class="muted" style="font-size:11.5px;margin:8px 0 0">Answers are generated and can be wrong.
+    This assistant only explains figures &mdash; it does not give advice.</p>
+  </div>
+</div>
+<script>
+(function(){
+  var fab=document.getElementById('ai-fab'),dock=document.getElementById('ai-dock'),
+      form=document.getElementById('ai-form');
+  if(!fab||!dock||!form) return;
+  var log=document.getElementById('ai-log'),input=document.getElementById('ai-input'),
+      send=document.getElementById('ai-send'),starters=document.getElementById('ai-starters');
+  var context={};try{context=JSON.parse(document.getElementById('ai-context').textContent);}catch(e){}
+  var endpoint="__AI_ENDPOINT__",hist=[];
+  function open(v){document.body.classList.toggle('ai-open',v);if(v)setTimeout(function(){input.focus();},250);}
+  fab.addEventListener('click',function(){open(!document.body.classList.contains('ai-open'));});
+  document.getElementById('ai-close').addEventListener('click',function(){open(false);});
+  function bubble(role,text){
+    var d=document.createElement('div');
+    d.className='ai-msg '+(role==='user'?'user':role==='err'?'err':'bot');
+    d.textContent=text;log.appendChild(d);d.scrollIntoView({block:'nearest'});return d;
+  }
+  function ask(q){
+    if(!q||send.disabled) return;
+    if(starters) starters.style.display='none';
+    bubble('user',q);hist.push({role:'user',content:q});
+    input.value='';send.disabled=true;
+    var wait=bubble('bot','\\u2026');
+    fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({context:context,messages:hist})})
+    .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+    .then(function(res){
+      if(!res.ok||!res.j.reply){wait.remove();bubble('err',res.j.error||'The assistant is unavailable right now.');return;}
+      wait.className='ai-msg bot';wait.textContent=res.j.reply;
+      hist.push({role:'assistant',content:res.j.reply});
+    })
+    .catch(function(){wait.remove();bubble('err','Could not reach the assistant. The dashboard is unaffected.');})
+    .finally(function(){send.disabled=false;input.focus();});
+  }
+  form.addEventListener('submit',function(e){e.preventDefault();ask((input.value||'').trim());});
+  if(starters) starters.addEventListener('click',function(e){
+    if(e.target.classList.contains('ai-starter')) ask((e.target.textContent||'').trim());
+  });
+})();
+</script>
+""".replace("__AI_ENDPOINT__", AI_ENDPOINT)
+
 
 def load_watchlist(source: Path) -> dict[str, object]:
     """Read data/watchlist_status.json (written by refresh_watchlist.py).
@@ -354,6 +508,11 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         "watchlist": load_watchlist(source),
     }
     payload_json = json.dumps(payload, ensure_ascii=True)
+    ai_ctx_json = json.dumps(ai_context(data), ensure_ascii=True).replace("<", "\\u003c")
+    ai_panel = (
+        f'<script type="application/json" id="ai-context">{ai_ctx_json}</script>'
+        + AI_WIDGET
+    )
     value_metric = "" if safe else """
       metric('Current Value', money(s.currentValue)),
       metric('Unrealized P&L', money(s.profitLoss), tone(s.profitLoss)),
@@ -1067,6 +1226,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     setInterval(renderRefreshStatus, 1000);
     setTimeout(refreshPage, AUTO_REFRESH_MS);
   </script>
+  {ai_panel}
 </body>
 </html>
 """
