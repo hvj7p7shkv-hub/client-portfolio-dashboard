@@ -63,6 +63,34 @@ TECHNICAL_FIELDS = [
 ]
 
 
+# Names the advisor client likes and would consider adding. Purely a watch
+# list — these are not holdings and are never counted in portfolio value,
+# weights, P&L, or any of the summary metrics.
+SUGGESTED_ADDS = [
+    "VSSL",
+    "Arvind Ltd",
+    "Welspun Enterprises",
+    "Fineotex Chemical",
+    "BLS E-Services",
+    "IG Petrochemicals",
+    "Sona BLW Precision Forgings",
+    "Grasim",
+    "Bosch",
+    "Nykaa",
+    "Tamilnad Mercantile Bank",
+    "Lumax Auto Technologies",
+]
+
+# From the same "stocks I like" list but already held, so shown only as a note.
+SUGGESTED_ADDS_ALREADY_HELD = [
+    "BHEL",
+    "ICICI Bank",
+    "Bajaj Auto",
+    "Oracle Financial Services (OFSS)",
+    "Aurobindo Pharma",
+]
+
+
 def clean_number(series: pd.Series) -> pd.Series:
     return pd.to_numeric(
         series.astype(str)
@@ -302,6 +330,8 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
         "summary": summary(data, safe),
         "bucketRows": bucket_rows(data),
         "holdings": records(data, safe),
+        "suggestedAdds": SUGGESTED_ADDS,
+        "suggestedAddsHeld": SUGGESTED_ADDS_ALREADY_HELD,
     }
     payload_json = json.dumps(payload, ensure_ascii=True)
     value_metric = "" if safe else """
@@ -402,6 +432,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .kv .v {{ display: block; margin-top: 8px; font-size: 19px; font-weight: 740; overflow-wrap: anywhere; }}
     .note {{ margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }}
     .note strong {{ color: var(--ink); }}
+    .add-stack {{ padding: 14px 18px 18px; }}
+    .add-stack .add-intro {{ margin: 0 0 14px; color: var(--muted); line-height: 1.5; }}
+    .add-grid {{ display: flex; flex-wrap: wrap; gap: 9px; }}
+    .add-grid .pill {{ font-size: 14px; padding: 7px 12px; background: #eef9f4; border-color: #bbdacc; color: var(--green); }}
     @media (max-width: 1100px) {{
       .metrics {{ grid-template-columns: repeat(3, minmax(145px, 1fr)); }}
       .guide-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -466,6 +500,18 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>Suggested Adds / Stocks I Like</h2>
+            <div class="muted">Watch list — not holdings, not in portfolio value</div>
+          </div>
+          <div class="add-stack">
+            <p class="add-intro">Names to consider adding to this portfolio. These are not owned and are excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard.</p>
+            <div id="suggestedAdds" class="add-grid"></div>
+            <div class="note" id="suggestedHeld"></div>
           </div>
         </section>
 
@@ -704,6 +750,22 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       document.getElementById('metrics').innerHTML = cells.join('');
     }}
 
+    function renderSuggestedAdds() {{
+      const grid = document.getElementById('suggestedAdds');
+      if (!grid) return;
+      const names = DATA.suggestedAdds || [];
+      grid.innerHTML = names.length
+        ? names.map(name => `<span class="pill">${{safe(name)}}</span>`).join('')
+        : '<span class="muted">None</span>';
+      const held = document.getElementById('suggestedHeld');
+      const owned = DATA.suggestedAddsHeld || [];
+      if (held) {{
+        held.innerHTML = owned.length
+          ? `<strong>Already in the portfolio (from the same list):</strong> ${{owned.join(', ')}}.`
+          : '';
+      }}
+    }}
+
     function renderBuckets() {{
       document.getElementById('bucketRows').innerHTML = DATA.bucketRows.map(row => `
         <div class="bucket-row">
@@ -897,6 +959,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     }}
 
     renderMetrics();
+    renderSuggestedAdds();
     renderBuckets();
     renderTechnicalTable();
     renderLaggardsTable();
