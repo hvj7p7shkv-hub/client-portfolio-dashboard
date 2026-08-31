@@ -455,6 +455,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     .add-stack {{ padding: 14px 18px 18px; }}
     .add-stack .add-intro {{ margin: 0 0 6px; color: var(--muted); line-height: 1.5; }}
     .add-generated {{ color: var(--muted); font-size: 12px; margin: 0 0 12px; }}
+    .small-table.watchlist-scroll {{ max-height: none; overflow-x: auto; overflow-y: visible; }}
+    .add-callout {{ margin-top: 12px; padding: 12px 14px; border: 1px solid #bbdacc; border-left: 4px solid var(--green); border-radius: 8px; background: #eef9f4; color: var(--ink); line-height: 1.5; }}
+    .add-callout strong {{ color: var(--ink); }}
+    .add-callout:empty {{ display: none; }}
     #watchlistTable td.name strong {{ display: block; }}
     #watchlistTable td.name .muted {{ font-size: 12px; }}
     #watchlistTable tr.below-key td {{ background: #fff3f4; }}
@@ -534,10 +538,10 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
             <div class="muted">Watch list — not holdings, not in portfolio value</div>
           </div>
           <div class="add-stack">
-            <p class="add-intro">Names to consider adding to this portfolio, each tracked from the day it entered the filter. Not owned and excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard. Watch new additions closely early &mdash; a row is flagged red once price closes below its 50- or 200-DMA.</p>
+            <p class="add-intro">Names to consider adding to this portfolio, each tracked from the day it entered the filter. Not owned and excluded from every holding count, weight, P&amp;L, and portfolio-value figure on this dashboard. Watch new additions closely early &mdash; a row is flagged red once price closes below its 50- or 200-DMA. Every name stays listed here until removed; scroll the table to the end so none of the lower rows are missed.</p>
             <p class="add-generated" id="watchlistGenerated"></p>
           </div>
-          <div class="small-table">
+          <div class="small-table watchlist-scroll">
             <table id="watchlistTable">
               <thead>
                 <tr>
@@ -558,7 +562,11 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
             </table>
           </div>
           <div class="add-stack">
-            <div class="note" id="suggestedHeld"></div>
+            <div class="add-callout">
+              <strong>While a name sits on this list, exposure to it can be increased if and when the client deems fit.</strong>
+              Presence here is a green light to add or scale in on the client's judgement &mdash; it is not an instruction, and nothing is bought automatically.
+            </div>
+            <div class="add-callout" id="suggestedHeld"></div>
           </div>
         </section>
 
@@ -847,7 +855,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
       const owned = DATA.suggestedAddsHeld || [];
       if (held) {{
         held.innerHTML = owned.length
-          ? `<strong>Already in the portfolio (from the same list):</strong> ${{owned.join(', ')}}.`
+          ? `<strong>Already held from this list:</strong> ${{owned.join(', ')}} &mdash; these are tracked in the holdings tables above, so the full "stocks I like" list is covered between the two.`
           : '';
       }}
     }}
