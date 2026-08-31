@@ -91,31 +91,34 @@ SUGGESTED_ADDS_ALREADY_HELD = [
 ]
 
 # --- "Ask about this dashboard" assistant -------------------------------------
-# A floating panel that talks to the Investezee AI worker (ai.investezee.com),
-# the same explain-only proxy the public portfolio report uses. It is handed a
-# figures-only slice of this dashboard (percentages and technical readings, no
-# rupee amounts / quantities / cost, none of the "Suggested Discussion" text)
-# and the worker's system prompt forbids it from ever suggesting an action.
-# Self-contained: its own <style>, no shared CSS vars, endpoint hard-coded.
-AI_ENDPOINT = "https://ai.investezee.com/"
+# A floating panel wired to the Investezee AI worker's ADVISOR endpoint
+# (advisor-ai.investezee.com). This is a private client dashboard, so the
+# assistant may give buy / sell / hold / sizing views. It is handed a
+# technical + P&L slice of the dashboard (percentages and readings, plus the
+# dashboard's own bucket / discussion notes) — no rupee amounts, quantities,
+# or cost basis. Self-contained: its own <style>, endpoint hard-coded.
+# EXPERIMENTAL — running it to see how the model does before settling on an approach.
+AI_ENDPOINT = "https://advisor-ai.investezee.com/"
 
 AI_TECHNICAL_FIELDS = [
-    "Technical Status", "RS vs 50D %", "RS 3M %", "RSI 14", "P&F Signal",
-    "Above 50DMA", "Above 200DMA", "200DMA Distance %", "52W High Distance %",
+    "Technical Status", "Technical Note", "RS vs 50D %", "RS 3M %", "RSI 14",
+    "P&F Signal", "Above 50DMA", "Above 200DMA", "200DMA Distance %",
+    "52W High Distance %",
 ]
 
 
 def ai_context(data: pd.DataFrame) -> dict[str, object]:
-    """A compact, figures-only view of the dashboard for the assistant.
+    """A compact technical + P&L view of the dashboard for the assistant.
 
-    Percentages and technical readings only — no rupee amounts, quantities,
-    cost basis, or the 'Suggested Discussion' text. Capped at the 60 largest
-    positions so the whole slice stays inside the worker's context limit."""
+    Percentages, technical readings and the dashboard's own bucket / discussion
+    notes — no rupee amounts, quantities, or cost basis. Capped at the 45
+    largest positions so the slice stays inside the worker's context limit."""
     tech = [f for f in AI_TECHNICAL_FIELDS if f in data.columns]
-    cols = [c for c in (["Symbol", "Weight %", "Profit/Loss %", "Portfolio Bucket"] + tech)
+    cols = [c for c in (["Symbol", "Weight %", "Profit/Loss %", "Portfolio Bucket",
+                         "Coordination Priority", "Suggested Discussion"] + tech)
             if c in data.columns]
     ranked = data.sort_values("Weight %", ascending=False) if "Weight %" in data.columns else data
-    frame = ranked[cols].head(60).where(pd.notna(ranked[cols].head(60)), None)
+    frame = ranked[cols].head(45).where(pd.notna(ranked[cols].head(45)), None)
     holdings = json.loads(frame.to_json(orient="records"))
     holdings = [
         {k: (round(v, 2) if isinstance(v, float) else v) for k, v in row.items()}
@@ -129,7 +132,8 @@ def ai_context(data: pd.DataFrame) -> dict[str, object]:
     if "Above 200DMA" in data.columns and len(data):
         above200 = round(float((data["Above 200DMA"].astype(str) == "True").mean() * 100), 1)
     return {
-        "what": "Client portfolio dashboard — technical + P&L snapshot of one person's stock holdings.",
+        "what": "Private client portfolio dashboard — point-in-time technical + P&L snapshot. "
+                "No company fundamentals, news, or the client's wider finances / goals / risk profile.",
         "generatedAt": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "benchmark": "Nifty Midcap 50 (^NSEMDCP50)",
         "portfolio": {
@@ -185,21 +189,22 @@ AI_WIDGET = """
   <span class="dot"></span>Ask about this dashboard</button>
 <div class="ai-dock" id="ai-dock">
   <div class="ai-head"><div><strong>Ask about this dashboard</strong>
-  <div class="ai-sub">Explains the figures &mdash; never advises</div></div>
+  <div class="ai-sub">A discussion aid for your portfolio</div></div>
   <button class="ai-x" id="ai-close" aria-label="Close">&times;</button></div>
   <div class="ai-body">
     <div class="ai-log" id="ai-log"></div>
     <div class="ai-starters" id="ai-starters">
-      <button class="ai-starter" type="button">What does RS vs 50D mean here?</button>
-      <button class="ai-starter" type="button">Which holdings are below their 200-DMA?</button>
-      <button class="ai-starter" type="button">Explain the RSI 14 column</button>
-      <button class="ai-starter" type="button">What is a Point &amp; Figure signal?</button>
+      <button class="ai-starter" type="button">Talk me through my biggest position</button>
+      <button class="ai-starter" type="button">Which holdings look weak right now?</button>
+      <button class="ai-starter" type="button">Anything here I should be paying attention to?</button>
+      <button class="ai-starter" type="button">Which names are lagging the midcap index?</button>
     </div>
     <form class="ai-form" id="ai-form">
-      <input id="ai-input" autocomplete="off" placeholder="Ask about a number&hellip;" maxlength="500">
+      <input id="ai-input" autocomplete="off" placeholder="Ask about a holding&hellip;" maxlength="500">
       <button type="submit" id="ai-send">Ask</button></form>
     <p class="muted" style="font-size:11.5px;margin:8px 0 0">Answers are generated and can be wrong.
-    This assistant only explains figures &mdash; it does not give advice.</p>
+    A discussion aid on the technical picture only &mdash; not a formal recommendation. You and
+    your advisor make the final call.</p>
   </div>
 </div>
 <script>
