@@ -543,6 +543,41 @@ def action_queue(data: pd.DataFrame) -> pd.DataFrame:
     ]
 
 
+def corporate_actions_section(source: Path) -> str:
+    """Static, manually-curated record of corporate actions (mergers, demergers,
+    stock swaps) that changed a holding's identity or share count, so the reason
+    a name disappeared/changed is visible on the dashboard itself, not just in
+    an offline change log."""
+    path = source.parent / "corporate_actions.csv"
+    if not path.exists():
+        return ""
+    try:
+        actions = pd.read_csv(path)
+    except Exception:
+        return ""
+    if actions.empty:
+        return ""
+    actions = actions.sort_values("date", ascending=False)
+    cards = []
+    for row in actions.itertuples():
+        cards.append(f"""
+            <div class="add-callout">
+              <strong>{html.escape(str(row.date))} &mdash; {html.escape(str(row.stock_from))} &rarr; {html.escape(str(row.stock_to))} ({html.escape(str(row.action_type))})</strong>
+              <p style="margin-top:6px">Ratio: {html.escape(str(row.ratio))}</p>
+              <p style="margin-top:6px">{html.escape(str(row.details))}</p>
+            </div>""")
+    return f"""
+        <section>
+          <div class="section-head">
+            <h2>Corporate Actions Affecting Portfolio</h2>
+            <div class="muted">Mergers, demergers, and share swaps that changed a holding</div>
+          </div>
+          <div class="add-stack">{''.join(cards)}
+          </div>
+        </section>
+"""
+
+
 def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
     title = "Client Portfolio Dashboard" if safe else "Client Portfolio Advisor Dashboard"
     mode = "Client-safe online view" if safe else "Full local advisor view"
@@ -756,7 +791,7 @@ def dashboard_html(data: pd.DataFrame, source: Path, safe: bool) -> str:
             </table>
           </div>
         </section>
-
+{corporate_actions_section(source)}
         <section>
           <div class="section-head">
             <h2>Suggested Adds / Stocks I Like</h2>

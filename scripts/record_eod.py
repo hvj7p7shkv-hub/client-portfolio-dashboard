@@ -59,7 +59,8 @@ def main() -> None:
     invested = clean_number(holdings["Invested Value"]).sum()
     current = clean_number(holdings["Current Value"]).sum()
 
-    row = {"date": today, "portfolio_invested": round(invested, 2), "portfolio_value": round(current, 2)}
+    row = {"date": today, "portfolio_invested": round(invested, 2), "portfolio_value": round(current, 2),
+           "basket": "new_92"}
     for label, ticker in BENCHMARKS.items():
         row[f"{label}_close"] = latest_close(ticker)
 
