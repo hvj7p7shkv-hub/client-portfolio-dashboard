@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15 12:30",
+  "generatedAt": "2026-09-15 14:30",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -194,7 +194,7 @@
       "above50DMA": true,
       "above200DMA": true,
       "dist50DMAPct": 3.17936105903891,
-      "dist200DMAPct": 32.99720351101691,
+      "dist200DMAPct": 32.997203442687436,
       "high52wDistPct": -4.126213592233007,
       "keyLevel": "Above key levels",
       "belowKeyLevel": false,
