@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04 05:08",
+  "generatedAt": "2026-10-04 05:37",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -188,7 +188,7 @@
       "technicalScore": 80,
       "technicalNote": "Price is above the 50dma; price is above the 200dma; relative strength is above its 50-day average; rsi is in a constructive momentum zone",
       "rsi14": 50.85,
-      "rsVs50Pct": 8.251937068161164,
+      "rsVs50Pct": 8.251937068161208,
       "rs3mPct": 28.779339794274293,
       "pfSignal": "Rising P&F column, no fresh breakout yet",
       "above50DMA": true,
@@ -333,7 +333,7 @@
       "technicalScore": 80,
       "technicalNote": "Price is above the 50dma; price is above the 200dma; relative strength is above its 50-day average; rsi is in a constructive momentum zone",
       "rsi14": 48.81,
-      "rsVs50Pct": 11.40020548339422,
+      "rsVs50Pct": 11.400205483394199,
       "rs3mPct": 37.519893191185695,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": true,
