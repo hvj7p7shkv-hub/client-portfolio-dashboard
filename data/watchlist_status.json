@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08 03:07",
+  "generatedAt": "2026-10-08 03:37",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -136,7 +136,7 @@
       "above50DMA": true,
       "above200DMA": true,
       "dist50DMAPct": 1.661690135280458,
-      "dist200DMAPct": 42.86326136334087,
+      "dist200DMAPct": 42.86326165367389,
       "high52wDistPct": -2.0693908046991116,
       "keyLevel": "Above key levels",
       "belowKeyLevel": false,
@@ -217,7 +217,7 @@
       "technicalScore": 0,
       "technicalNote": "Relative strength is below its 50-day average; rsi is weak or oversold",
       "rsi14": 26.16,
-      "rsVs50Pct": -3.941195486403548,
+      "rsVs50Pct": -3.941195486403526,
       "rs3mPct": -3.151082110316439,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": false,
