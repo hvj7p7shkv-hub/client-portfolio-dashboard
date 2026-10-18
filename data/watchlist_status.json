@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18 03:37",
+  "generatedAt": "2026-10-18 04:07",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -130,13 +130,13 @@
       "technicalScore": 20,
       "technicalNote": "Price is above the 200dma",
       "rsi14": 37.06,
-      "rsVs50Pct": -2.6944218462873426,
+      "rsVs50Pct": -2.694421846287365,
       "rs3mPct": 13.287417389222057,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -7.177696106688325,
-      "dist200DMAPct": 28.730777333915892,
+      "dist200DMAPct": 28.730777506341898,
       "high52wDistPct": -10.742549499352915,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
@@ -194,7 +194,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -0.578632480328467,
-      "dist200DMAPct": 27.60820365376926,
+      "dist200DMAPct": 27.608203591651282,
       "high52wDistPct": -3.961584633853543,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
