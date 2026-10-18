@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18 05:37",
+  "generatedAt": "2026-10-18 06:07",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -130,7 +130,7 @@
       "technicalScore": 20,
       "technicalNote": "Price is above the 200dma",
       "rsi14": 37.06,
-      "rsVs50Pct": -2.694421846287365,
+      "rsVs50Pct": -2.6944218462873426,
       "rs3mPct": 13.287417389222057,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": false,
