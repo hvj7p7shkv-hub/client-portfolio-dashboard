@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19 10:37",
+  "generatedAt": "2026-10-19 12:30",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -130,7 +130,7 @@
       "technicalScore": 0,
       "technicalNote": "Price is above the 200dma; relative strength is below its 50-day average; rsi is weak or oversold",
       "rsi14": 33.77,
-      "rsVs50Pct": -3.8285535389707914,
+      "rsVs50Pct": -3.8285535389708025,
       "rs3mPct": 13.222034518901538,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": false,
