@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20 09:37",
+  "generatedAt": "2026-10-20 10:07",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -72,7 +72,7 @@
       "technicalScore": 20,
       "technicalNote": "Price is above the 200dma; relative strength is above its 50-day average; p&f shows a bearish breakdown",
       "rsi14": 39.88,
-      "rsVs50Pct": 3.347451648597577,
+      "rsVs50Pct": 3.3474516485975547,
       "rs3mPct": 18.896018849035933,
       "pfSignal": "Bearish P&F breakdown",
       "above50DMA": false,
@@ -194,7 +194,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -1.3291977297739788,
-      "dist200DMAPct": 26.33390230108017,
+      "dist200DMAPct": 26.333902270408327,
       "high52wDistPct": -4.681872749099636,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
