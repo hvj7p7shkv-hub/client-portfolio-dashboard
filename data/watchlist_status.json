@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21 03:07",
+  "generatedAt": "2026-10-21 03:38",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -130,13 +130,13 @@
       "technicalScore": 0,
       "technicalNote": "Price is above the 200dma; relative strength is below its 50-day average; rsi is weak or oversold",
       "rsi14": 33.77,
-      "rsVs50Pct": -3.8285535389708025,
+      "rsVs50Pct": -3.8285535389707914,
       "rs3mPct": 13.222034518901538,
       "pfSignal": "Falling P&F column, wait for reversal",
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -9.091199744460221,
-      "dist200DMAPct": 25.61521819845918,
+      "dist200DMAPct": 25.6152180304988,
       "high52wDistPct": -12.751063030499466,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
@@ -194,7 +194,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -1.3291977297739788,
-      "dist200DMAPct": 26.33390230108017,
+      "dist200DMAPct": 26.333902270408327,
       "high52wDistPct": -4.681872749099636,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
