@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25 09:08",
+  "generatedAt": "2026-10-25 09:37",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -194,7 +194,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -6.100098286365352,
-      "dist200DMAPct": 18.975476046174578,
+      "dist200DMAPct": 18.975476017484837,
       "high52wDistPct": -9.62185167035564,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
@@ -246,7 +246,7 @@
       "technicalScore": 45,
       "technicalNote": "Price is above the 200dma; relative strength is above its 50-day average",
       "rsi14": 40.25,
-      "rsVs50Pct": 3.119182386548247,
+      "rsVs50Pct": 3.119182386548225,
       "rs3mPct": 15.674327851324943,
       "pfSignal": "Rising P&F column, no fresh breakout yet",
       "above50DMA": false,
