@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29 03:08",
+  "generatedAt": "2026-10-29 03:38",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -136,7 +136,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -4.395662243881738,
-      "dist200DMAPct": 29.775057201758194,
+      "dist200DMAPct": 29.77505728770531,
       "high52wDistPct": -9.007914045561838,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
@@ -194,7 +194,7 @@
       "above50DMA": true,
       "above200DMA": true,
       "dist50DMAPct": 9.371542457089488,
-      "dist200DMAPct": 37.806517432460375,
+      "dist200DMAPct": 37.80651736656142,
       "high52wDistPct": 0.0,
       "keyLevel": "Above key levels",
       "belowKeyLevel": false,
@@ -217,7 +217,7 @@
       "technicalScore": 0,
       "technicalNote": "P&f shows a bearish breakdown",
       "rsi14": 39.88,
-      "rsVs50Pct": -0.8428706765919336,
+      "rsVs50Pct": -0.8428706765919114,
       "rs3mPct": 2.164650834103976,
       "pfSignal": "Bearish P&F breakdown",
       "above50DMA": false,
