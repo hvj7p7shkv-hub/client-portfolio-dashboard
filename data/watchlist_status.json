@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-03 10:08",
+  "generatedAt": "2026-11-03 10:38",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -14,7 +14,7 @@
       "technicalScore": 25,
       "technicalNote": "Price is above the 200dma; relative strength is below its 50-day average; rsi is in a constructive momentum zone",
       "rsi14": 45.94,
-      "rsVs50Pct": -3.3114177511357035,
+      "rsVs50Pct": -3.3114177511357146,
       "rs3mPct": 25.868682094640995,
       "pfSignal": "Rising P&F column, no fresh breakout yet",
       "above50DMA": false,
@@ -136,7 +136,7 @@
       "above50DMA": false,
       "above200DMA": true,
       "dist50DMAPct": -5.316021584250496,
-      "dist200DMAPct": 26.36008337432958,
+      "dist200DMAPct": 26.360083291629266,
       "high52wDistPct": -10.346926162043136,
       "keyLevel": "Below 50 DMA",
       "belowKeyLevel": true,
@@ -194,7 +194,7 @@
       "above50DMA": true,
       "above200DMA": true,
       "dist50DMAPct": 11.1104250768417,
-      "dist200DMAPct": 39.16351204968551,
+      "dist200DMAPct": 39.16351198401682,
       "high52wDistPct": -0.6567704759488979,
       "keyLevel": "Above key levels",
       "belowKeyLevel": false,
