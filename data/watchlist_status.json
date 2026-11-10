@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-10 04:07",
+  "generatedAt": "2026-11-10 04:38",
   "benchmark": "^NSEMDCP50",
   "records": [
     {
@@ -130,7 +130,7 @@
       "technicalScore": 25,
       "technicalNote": "Price is above the 200dma; relative strength is below its 50-day average; rsi is in a constructive momentum zone",
       "rsi14": 46.86,
-      "rsVs50Pct": -6.03309303144769,
+      "rsVs50Pct": -6.033093031447667,
       "rs3mPct": -1.5377313044506624,
       "pfSignal": "Rising P&F column, no fresh breakout yet",
       "above50DMA": false,
